@@ -31,13 +31,13 @@ export async function POST(request) {
     const db = client.db("FixArg")
     
     // Ensure the taskers collection exists
-    const collections = await db.listCollections({ name: 'taskers' }).toArray()
+    const collections = await db.listCollections({ name: 'trabajadores' }).toArray()
     if (collections.length === 0) {
-      await db.createCollection('taskers')
+      await db.createCollection('trabajadores')
     }
     
     // Insert the new tasker document
-    const result = await db.collection('taskers').insertOne({
+    const result = await db.collection('trabajadores').insertOne({
       ...body,
       status: 'pending',
       createdAt: new Date(),
