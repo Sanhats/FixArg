@@ -12,7 +12,16 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogClose,
 } from "@/components/ui/dialog"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import {
   Select,
   SelectContent,
@@ -21,7 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
-import { Check, Upload, ChevronRight } from "lucide-react"
+import { Check, Upload, ChevronRight, Home } from "lucide-react"
 
 export default function BecomeTaskerForm() {
   const [step, setStep] = useState(1)
@@ -91,6 +100,7 @@ export default function BecomeTaskerForm() {
         throw new Error(data.message || 'Error al enviar los datos')
       }
 
+      setProgress(100) // Completar la barra de progreso
       setSubmitSuccess(true)
       console.log('Datos enviados correctamente', data)
     } catch (error) {
@@ -187,6 +197,40 @@ export default function BecomeTaskerForm() {
       setSubmitError(error.message);
     }
   };
+
+  if (submitSuccess) {
+    return (
+      <Dialog open>
+        <DialogContent className="sm:max-w-[500px]">
+          <Card className="border-0 shadow-none">
+            <CardHeader>
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#14A800] flex items-center justify-center">
+                <Check className="w-8 h-8 text-white" />
+              </div>
+              <DialogTitle className="text-center text-2xl">¡Solicitud Enviada!</DialogTitle>
+              <CardDescription className="text-center">
+                Gracias por tu interés en unirte a nuestra comunidad. Revisaremos tu solicitud y nos pondremos en contacto contigo pronto.
+              </CardDescription>
+            </CardHeader>
+            <CardFooter className="flex justify-center gap-4">
+              <DialogClose asChild>
+                <Button variant="outline">
+                  Cerrar
+                </Button>
+              </DialogClose>
+              <Button 
+                className="bg-[#14A800] text-white hover:bg-[#14A800]/90"
+                onClick={() => window.location.href = '/'}
+              >
+                <Home className="mr-2 h-4 w-4" />
+                Ir al inicio
+              </Button>
+            </CardFooter>
+          </Card>
+        </DialogContent>
+      </Dialog>
+    )
+  }
 
   return (
     <Dialog>
@@ -315,7 +359,6 @@ export default function BecomeTaskerForm() {
                   onChange={(e) => setFormData({...formData, description: e.target.value})}
                   required
                 />
-              
               </div>
             </div>
           )}
@@ -363,7 +406,8 @@ export default function BecomeTaskerForm() {
                       onClick={handleVerifyCode}
                       disabled={isVerifying}
                     >
-                      {isVerifying ? "Verificando..." : "Confirmar"}
+                      {isVerifying ? 
+                      "Verificando..." : "Confirmar"}
                     </Button>
                   </div>
                 </div>
