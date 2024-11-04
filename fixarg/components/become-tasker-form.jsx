@@ -1,0 +1,428 @@
+"use client"
+
+import { useState, useRef } from "react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Progress } from "@/components/ui/progress"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
+import { Check, Upload, ChevronRight } from "lucide-react"
+
+export default function BecomeTaskerForm() {
+  const [step, setStep] = useState(1)
+  const [progress, setProgress] = useState(25)
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    displayName: "",
+    profilePicture: null,
+    description: "",
+    occupation: "",
+    skills: [],
+    email: "",
+    phone: "",
+  })
+  const [previewUrl, setPreviewUrl] = useState(null)
+  const fileInputRef = useRef(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState(null)
+  const [submitSuccess, setSubmitSuccess] = useState(false)
+  const [emailVerified, setEmailVerified] = useState(false)
+  const [verificationCode, setVerificationCode] = useState("")
+  const [isVerifying, setIsVerifying] = useState(false)
+
+  const handleNext = () => {
+    setStep(step + 1)
+    setProgress(progress + 25)
+  }
+
+  const handleBack = () => {
+    setStep(step - 1)
+    setProgress(progress - 25)
+  }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!emailVerified) {
+      setSubmitError("Por favor, verifica tu correo electrónico antes de enviar la solicitud.")
+      return
+    }
+    setIsSubmitting(true)
+    setSubmitError(null)
+    
+    try {
+      const dataToSend = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        displayName: formData.displayName,
+        description: formData.description,
+        occupation: formData.occupation,
+        skills: formData.skills,
+        email: formData.email,
+        phone: formData.phone,
+      }
+
+      const response = await fetch('/api/taskers', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(dataToSend),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Error al enviar los datos')
+      }
+
+      setSubmitSuccess(true)
+      console.log('Datos enviados correctamente', data)
+    } catch (error) {
+      setSubmitError(error.message)
+      console.error('Submission error:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setPreviewUrl(event.target.result);
+      };
+      reader.readAsDataURL(file);
+      setFormData({ ...formData, profilePicture: file });
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setFormData({ ...formData, profilePicture: null });
+    setPreviewUrl(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const triggerFileInput = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const handleSendVerificationCode = async () => {
+    if (!validateEmail(formData.email)) {
+      setSubmitError("Por favor, ingresa un correo electrónico válido.");
+      return;
+    }
+    setIsVerifying(true);
+    try {
+      const response = await fetch('/api/verify-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: formData.email, action: 'send' }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Error al enviar el código de verificación');
+      }
+
+      setIsVerifying(false);
+      setSubmitError(null);
+      alert("Código de verificación enviado. Por favor, revisa tu correo electrónico.");
+    } catch (error) {
+      setIsVerifying(false);
+      setSubmitError(error.message);
+    }
+  };
+
+  const handleVerifyCode = async () => {
+    setIsVerifying(true);
+    try {
+      const response = await fetch('/api/verify-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: formData.email, action: 'verify', code: verificationCode }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Error al verificar el código');
+      }
+
+      setIsVerifying(false);
+      setEmailVerified(true);
+      setSubmitError(null);
+    } catch (error) {
+      setIsVerifying(false);
+      setSubmitError(error.message);
+    }
+  };
+
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button className="bg-[#14A800] text-white hover:bg-[#14A800]/90">
+          Ofrece tu servicio
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>Ofrece tu servicio</DialogTitle>
+          <DialogDescription>
+          Ingresa a nuestra comunidad de profesionales
+          </DialogDescription>
+        </DialogHeader>
+        
+        <Progress value={progress} className="mb-4" />
+        
+        <div className="flex items-center gap-2 mb-6">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 1 ? 'bg-[#14A800] text-white' : 'bg-gray-200'}`}>1</div>
+          <div className="h-px flex-1 bg-gray-200" />
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 2 ? 'bg-[#14A800] text-white' : 'bg-gray-200'}`}>2</div>
+          <div className="h-px flex-1 bg-gray-200" />
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 3 ? 'bg-[#14A800] text-white' : 'bg-gray-200'}`}>3</div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {step === 1 && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Informacion personal</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">Nombre</Label>
+                  <Input
+                    id="firstName"
+                    value={formData.firstName}
+                    onChange={(e) => setFormData({...formData, firstName: e.target.value})}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Apellido</Label>
+                  <Input
+                    id="lastName"
+                    value={formData.lastName}
+                    onChange={(e) => setFormData({...formData, lastName: e.target.value})}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="displayName">Nombre de profesional</Label>
+                <Input
+                  id="displayName"
+                  value={formData.displayName}
+                  onChange={(e) => setFormData({...formData, displayName: e.target.value})}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Foto de perfil</Label>
+                <div 
+                  className="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer relative"
+                  onClick={triggerFileInput}
+                >
+                  {previewUrl ? (
+                    <>
+                      <img src={previewUrl} alt="Profile preview" className="mx-auto h-32 w-32 object-cover rounded-full" />
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="absolute top-2 right-2"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveImage();
+                        }}
+                      >
+                        Eliminar
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                      <div className="mt-2">Haga clic para cargar o arrastrar y soltar</div>
+                    </>
+                  )}
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileChange}
+                    accept="image/*"
+                    className="hidden"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {step === 2 && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Informacion personal</h3>
+              <div className="space-y-2">
+                <Label htmlFor="occupation">Ocupacion</Label>
+                <Select onValueChange={(value) => setFormData({...formData, occupation: value})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona tu ocupacion" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ensamblaje">Ensamblaje</SelectItem>
+                    <SelectItem value="montaje">Montaje</SelectItem>
+                    <SelectItem value="mudanza">Mudanza</SelectItem>
+                    <SelectItem value="limpieza">Limpieza</SelectItem>
+                    <SelectItem value="ayuda">Ayuda en exteriores</SelectItem>
+                    <SelectItem value="reparar">Reparaciones del Hogar</SelectItem>
+                    <SelectItem value="pintar">Pintura</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="description">Descripcion del servicio</Label>
+                <Textarea
+                  id="description"
+                  placeholder="Háblanos un poco de tu experiencia laboral, de los proyectos interesantes que has realizado y de tu especialidad."
+                  value={formData.description}
+                  onChange={(e) => setFormData({...formData, description: e.target.value})}
+                  required
+                />
+              
+              </div>
+            </div>
+          )}
+
+          {step === 3 && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Seguridad de la cuenta</h3>
+              <div className="space-y-2">
+                <Label htmlFor="email">Correo electronico</Label>
+                <div className="flex space-x-2">
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => 
+                      setFormData({ ...formData, email: e.target.value })
+                    }
+                    required
+                    disabled={emailVerified}
+                  />
+                  <Button
+                    type="button"
+                    onClick={handleSendVerificationCode}
+                    disabled={emailVerified || isVerifying}
+                  >
+                    {isVerifying ? "Enviando..." : "Verificar"}
+                  </Button>
+                </div>
+              </div>
+              {!emailVerified && (
+                <div className="space-y-2">
+                  <Label htmlFor="verificationCode">
+                    Código de verificación
+                  </Label>
+                  <div className="flex space-x-2">
+                    <Input
+                      id="verificationCode"
+                      type="text"
+                      value={verificationCode}
+                      onChange={(e) => setVerificationCode(e.target.value)}
+                      required
+                    />
+                    <Button
+                      type="button"
+                      onClick={handleVerifyCode}
+                      disabled={isVerifying}
+                    >
+                      {isVerifying ? "Verificando..." : "Confirmar"}
+                    </Button>
+                  </div>
+                </div>
+              )}
+              {emailVerified && (
+                <div className="text-green-500 flex items-center">
+                  <Check className="mr-2" /> Correo electrónico verificado
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label htmlFor="phone">Numero de telefono</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  value={formData.phone}
+                  onChange={(e) =>
+                    setFormData({ ...formData, phone: e.target.value })
+                  }
+                  required
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-between pt-4">
+            {step > 1 && (
+              <Button type="button" variant="outline" onClick={handleBack}>
+                Volver
+              </Button>
+            )}
+            {step < 3 ? (
+              <Button type="button" className="ml-auto" onClick={handleNext}>
+                Avanzar <ChevronRight className="ml-2 h-4 w-4" />
+              </Button>
+            ) : (
+              <div className="w-full space-y-4">
+                {submitError && (
+                  <div className="p-3 text-sm text-red-500 bg-red-50 rounded-md">
+                    {submitError}
+                  </div>
+                )}
+                {submitSuccess && (
+                  <div className="p-3 text-sm text-green-500 bg-green-50 rounded-md">
+                    Solicitud enviada correctamente. Revisaremos su solicitud y
+                    nos pondremos en contacto con usted en breve.
+                  </div>
+                )}
+                <Button
+                  type="submit"
+                  className="w-full bg-[#14A800] text-white hover:bg-[#14A800]/90"
+                  disabled={isSubmitting || !emailVerified}
+                >
+                  {isSubmitting ? "Enviando..." : "Enviar solicitud"}
+                </Button>
+              </div>
+            )}
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}

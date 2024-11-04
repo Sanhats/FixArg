@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
 import { Search, Wrench, Drill, Truck, Brush, Hammer, PaintBucket, Flame, Leaf } from "lucide-react"
+import BecomeTaskerForm from "@/components/become-tasker-form"
 
 export default function HomePage() {
   return (
@@ -17,14 +18,13 @@ export default function HomePage() {
             <div className="flex items-center gap-4">
               <Button variant="ghost">Servicios</Button>
               <Button variant="ghost">Registrarse / Iniciar sesion</Button>
-              <Button className="bg-[#14A800] text-white hover:bg-[#14A800]/90">
-                Soy un profesional
-              </Button>
+              <BecomeTaskerForm />
+
             </div>
           </nav>
         </div>
       </header>
-
+      
       <main className="container mx-auto px-4 py-12">
         <div className="relative">
           
