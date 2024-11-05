@@ -204,7 +204,7 @@ export default function BecomeTaskerForm() {
         <DialogContent className="sm:max-w-[500px]">
           <Card className="border-0 shadow-none">
             <CardHeader>
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#14A800] flex items-center justify-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#091E05] flex items-center justify-center">
                 <Check className="w-8 h-8 text-white" />
               </div>
               <DialogTitle className="text-center text-2xl">¡Solicitud Enviada!</DialogTitle>
@@ -235,7 +235,7 @@ export default function BecomeTaskerForm() {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button className="bg-[#14A800] text-white hover:bg-[#14A800]/90">
+        <Button className="bg-[#71816D] text-white hover:bg-[#71856D]/90">
           Ofrece tu servicio
         </Button>
       </DialogTrigger>
@@ -247,14 +247,14 @@ export default function BecomeTaskerForm() {
           </DialogDescription>
         </DialogHeader>
         
-        <Progress value={progress} className="mb-4" />
+        <Progress value={progress} className="mb-4 color-[#324376]" />
         
         <div className="flex items-center gap-2 mb-6">
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 1 ? 'bg-[#14A800] text-white' : 'bg-gray-200'}`}>1</div>
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 1 ? 'bg-[#091E05] text-white' : 'bg-gray-200'}`}>1</div>
           <div className="h-px flex-1 bg-gray-200" />
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 2 ? 'bg-[#14A800] text-white' : 'bg-gray-200'}`}>2</div>
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 2 ? 'bg-[#091E05] text-white' : 'bg-gray-200'}`}>2</div>
           <div className="h-px flex-1 bg-gray-200" />
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 3 ? 'bg-[#14A800] text-white' : 'bg-gray-200'}`}>3</div>
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 3 ? 'bg-[#091E05] text-white' : 'bg-gray-200'}`}>3</div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -314,7 +314,7 @@ export default function BecomeTaskerForm() {
                     </>
                   ) : (
                     <>
-                      <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                      <Upload className="mx-auto h-12 w-12 text-[#71816D]" />
                       <div className="mt-2">Haga clic para cargar o arrastrar y soltar</div>
                     </>
                   )}
@@ -413,7 +413,7 @@ export default function BecomeTaskerForm() {
                 </div>
               )}
               {emailVerified && (
-                <div className="text-green-500 flex items-center">
+                <div className="text-[#091E05] flex items-center">
                   <Check className="mr-2" /> Correo electrónico verificado
                 </div>
               )}
@@ -457,7 +457,7 @@ export default function BecomeTaskerForm() {
                 )}
                 <Button
                   type="submit"
-                  className="w-full bg-[#14A800] text-white hover:bg-[#14A800]/90"
+                  className="w-full bg-[#091E05] text-white hover:bg-[#096E05]/90"
                   disabled={isSubmitting || !emailVerified}
                 >
                   {isSubmitting ? "Enviando..." : "Enviar solicitud"}
