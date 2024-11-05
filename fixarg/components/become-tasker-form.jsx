@@ -207,19 +207,19 @@ export default function BecomeTaskerForm() {
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#091E05] flex items-center justify-center">
                 <Check className="w-8 h-8 text-white" />
               </div>
-              <DialogTitle className="text-center text-2xl">¡Solicitud Enviada!</DialogTitle>
-              <CardDescription className="text-center">
+              <DialogTitle className="text-center text-xl sm:text-2xl">¡Solicitud Enviada!</DialogTitle>
+              <CardDescription className="text-center text-sm sm:text-base">
                 Gracias por tu interés en unirte a nuestra comunidad. Revisaremos tu solicitud y nos pondremos en contacto contigo pronto.
               </CardDescription>
             </CardHeader>
-            <CardFooter className="flex justify-center gap-4">
+            <CardFooter className="flex flex-col sm:flex-row justify-center gap-4">
               <DialogClose asChild>
-                <Button variant="outline">
+                <Button variant="outline" className="w-full sm:w-auto">
                   Cerrar
                 </Button>
               </DialogClose>
               <Button 
-                className="bg-[#14A800] text-white hover:bg-[#14A800]/90"
+                className="w-full sm:w-auto bg-[#14A800] text-white hover:bg-[#14A800]/90"
                 onClick={() => window.location.href = '/'}
               >
                 <Home className="mr-2 h-4 w-4" />
@@ -239,10 +239,10 @@ export default function BecomeTaskerForm() {
           Ofrece tu servicio
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] w-[95vw] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Ofrece tu servicio</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-lg sm:text-xl">Ofrece tu servicio</DialogTitle>
+          <DialogDescription className="text-sm sm:text-base">
           Ingresa a nuestra comunidad de profesionales
           </DialogDescription>
         </DialogHeader>
@@ -250,18 +250,18 @@ export default function BecomeTaskerForm() {
         <Progress value={progress} className="mb-4 color-[#324376]" />
         
         <div className="flex items-center gap-2 mb-6">
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 1 ? 'bg-[#091E05] text-white' : 'bg-gray-200'}`}>1</div>
+          <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm ${step >= 1 ? 'bg-[#091E05] text-white' : 'bg-gray-200'}`}>1</div>
           <div className="h-px flex-1 bg-gray-200" />
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 2 ? 'bg-[#091E05] text-white' : 'bg-gray-200'}`}>2</div>
+          <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm ${step >= 2 ? 'bg-[#091E05] text-white' : 'bg-gray-200'}`}>2</div>
           <div className="h-px flex-1 bg-gray-200" />
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 3 ? 'bg-[#091E05] text-white' : 'bg-gray-200'}`}>3</div>
+          <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm ${step >= 3 ? 'bg-[#091E05] text-white' : 'bg-gray-200'}`}>3</div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
           {step === 1 && (
             <div className="space-y-4">
-              <h3 className="text-lg font-medium">Informacion personal</h3>
-              <div className="grid grid-cols-2 gap-4">
+              <h3 className="text-base sm:text-lg font-medium">Informacion personal</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="firstName">Nombre</Label>
                   <Input
@@ -298,7 +298,7 @@ export default function BecomeTaskerForm() {
                 >
                   {previewUrl ? (
                     <>
-                      <img src={previewUrl} alt="Profile preview" className="mx-auto h-32 w-32 object-cover rounded-full" />
+                      <img src={previewUrl} alt="Profile preview" className="mx-auto h-24 w-24 sm:h-32 sm:w-32 object-cover rounded-full" />
                       <Button
                         type="button"
                         variant="destructive"
@@ -314,8 +314,8 @@ export default function BecomeTaskerForm() {
                     </>
                   ) : (
                     <>
-                      <Upload className="mx-auto h-12 w-12 text-[#71816D]" />
-                      <div className="mt-2">Haga clic para cargar o arrastrar y soltar</div>
+                      <Upload className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-[#71816D]" />
+                      <div className="mt-2 text-sm sm:text-base">Haga clic para cargar o arrastrar y soltar</div>
                     </>
                   )}
                   <input
@@ -332,7 +332,7 @@ export default function BecomeTaskerForm() {
 
           {step === 2 && (
             <div className="space-y-4">
-              <h3 className="text-lg font-medium">Informacion personal</h3>
+              <h3 className="text-base sm:text-lg font-medium">Informacion personal</h3>
               <div className="space-y-2">
                 <Label htmlFor="occupation">Ocupacion</Label>
                 <Select onValueChange={(value) => setFormData({...formData, occupation: value})}>
@@ -358,6 +358,7 @@ export default function BecomeTaskerForm() {
                   value={formData.description}
                   onChange={(e) => setFormData({...formData, description: e.target.value})}
                   required
+                  className="min-h-[100px]"
                 />
               </div>
             </div>
@@ -365,11 +366,12 @@ export default function BecomeTaskerForm() {
 
           {step === 3 && (
             <div className="space-y-4">
-              <h3 className="text-lg font-medium">Seguridad de la cuenta</h3>
+              <h3 className="text-base sm:text-lg font-medium">Seguridad de la cuenta</h3>
               <div className="space-y-2">
                 <Label htmlFor="email">Correo electronico</Label>
-                <div className="flex space-x-2">
+                <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
                   <Input
+                    
                     id="email"
                     type="email"
                     value={formData.email}
@@ -378,11 +380,13 @@ export default function BecomeTaskerForm() {
                     }
                     required
                     disabled={emailVerified}
+                    className="flex-grow"
                   />
                   <Button
                     type="button"
                     onClick={handleSendVerificationCode}
                     disabled={emailVerified || isVerifying}
+                    className="w-full sm:w-auto"
                   >
                     {isVerifying ? "Enviando..." : "Verificar"}
                   </Button>
@@ -393,18 +397,20 @@ export default function BecomeTaskerForm() {
                   <Label htmlFor="verificationCode">
                     Código de verificación
                   </Label>
-                  <div className="flex space-x-2">
+                  <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
                     <Input
                       id="verificationCode"
                       type="text"
                       value={verificationCode}
                       onChange={(e) => setVerificationCode(e.target.value)}
                       required
+                      className="flex-grow"
                     />
                     <Button
                       type="button"
                       onClick={handleVerifyCode}
                       disabled={isVerifying}
+                      className="w-full sm:w-auto"
                     >
                       {isVerifying ? 
                       "Verificando..." : "Confirmar"}
@@ -413,8 +419,8 @@ export default function BecomeTaskerForm() {
                 </div>
               )}
               {emailVerified && (
-                <div className="text-[#091E05] flex items-center">
-                  <Check className="mr-2" /> Correo electrónico verificado
+                <div className="text-[#091E05] flex items-center text-sm sm:text-base">
+                  <Check className="mr-2 h-4 w-4 sm:h-5 sm:w-5" /> Correo electrónico verificado
                 </div>
               )}
               <div className="space-y-2">
