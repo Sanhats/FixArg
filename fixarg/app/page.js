@@ -13,7 +13,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 import BecomeTaskerForm from "@/components/become-tasker-form"
-
+import UserRegistrationForm from "@/components/user-registration-form"
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-white">
@@ -26,7 +26,7 @@ export default function HomePage() {
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center gap-4 text-[#71816D]">
               <Button variant="ghost">Servicios</Button>
-              <Button variant="ghost">Registrarse</Button>
+              <UserRegistrationForm />
               <BecomeTaskerForm />
             </div>
             {/* Mobile Navigation */}
@@ -44,16 +44,15 @@ export default function HomePage() {
                     <SheetTitle>Menú</SheetTitle>
                   </SheetHeader>
                   <div className="flex flex-col gap-4 mt-4">
-                    <Button variant="ghost" className="w-full justify-start">
-                      Servicios
-                    </Button>
-                    <Button variant="ghost" className="w-full justify-start">
-                      Registrarse
-                    </Button>
-                    <Button variant="ghost" className="w-full justify-start">
-                      Iniciar sesión
-                    </Button>
-                  </div>
+  {/* <Button variant="ghost" className="w-full justify-start">
+      Servicios
+  </Button> */}
+  <UserRegistrationForm />
+  {/* <Button variant="ghost" className="w-full justify-start">
+      Iniciar sesión
+  </Button> */}
+</div>
+
                 </SheetContent>
               </Sheet>
             </div>

@@ -463,7 +463,7 @@ export default function BecomeTaskerForm() {
                 )}
                 <Button
                   type="submit"
-                  className="w-full bg-[#091E05] text-white hover:bg-[#096E05]/90"
+                  className="w-full bg-[#091E05] text-white hover:bg-[#092E05]/90"
                   disabled={isSubmitting || !emailVerified}
                 >
                   {isSubmitting ? "Enviando..." : "Enviar solicitud"}
