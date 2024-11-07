@@ -20,6 +20,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+} from "@/components/ui/card"
+import LoginForm from "./login-form"
+
 
 // This is a simplified list of provinces in Argentina
 const provinces = [
@@ -82,6 +92,7 @@ export default function UserRegistrationForm() {
     province: "",
     locality: "",
     email: "",
+    password: "",
   })
   const [availableLocalities, setAvailableLocalities] = useState([])
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -193,6 +204,27 @@ export default function UserRegistrationForm() {
       setIsVerifying(false)
       setSubmitError(error.message)
     }
+  }
+
+  if (submitSuccess) {
+    return (
+      <Dialog open>
+        <DialogContent className="sm:max-w-[425px]">
+          <Card>
+            <CardHeader>
+              <CardTitle>Registro Exitoso</CardTitle>
+              <CardDescription>Tu cuenta ha sido creada correctamente.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p>Ahora puedes iniciar sesión con tu correo electrónico y contraseña.</p>
+            </CardContent>
+            <CardFooter>
+            <LoginForm />
+            </CardFooter>
+          </Card>
+        </DialogContent>
+      </Dialog>
+    )
   }
 
   return (
@@ -350,11 +382,19 @@ export default function UserRegistrationForm() {
               <Check className="mr-2 h-4 w-4 sm:h-5 sm:w-5" /> Correo electrónico verificado
             </div>
           )}
+          <div className="space-y-2">
+            <Label htmlFor="password" className="text-sm sm:text-base">Contraseña</Label>
+            <Input
+              id="password"
+              type="password"
+              value={formData.password}
+              onChange={(e) => setFormData({...formData, password: e.target.value})}
+              required
+              className="text-sm sm:text-base"
+            />
+          </div>
           {submitError && (
             <div className="text-red-500 text-sm sm:text-base">{submitError}</div>
-          )}
-          {submitSuccess && (
-            <div className="text-green-500 text-sm sm:text-base">Registro completado con éxito.</div>
           )}
           <Button
             type="submit"

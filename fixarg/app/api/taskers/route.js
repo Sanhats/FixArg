@@ -26,6 +26,26 @@ export async function POST(request) {
     // Parse the JSON body
     const body = await request.json()
     
+    // Validate hourly rate
+    if (body.hourlyRate !== undefined) {
+      const hourlyRate = parseFloat(body.hourlyRate)
+      if (isNaN(hourlyRate) || hourlyRate < 0) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            message: 'Invalid hourly rate. Must be a non-negative number.',
+          }),
+          {
+            status: 400,
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }
+        )
+      }
+      body.hourlyRate = hourlyRate // Ensure it's stored as a number
+    }
+    
     // Connect to MongoDB
     const client = await clientPromise
     const db = client.db("FixArg")

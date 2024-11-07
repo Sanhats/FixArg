@@ -36,6 +36,18 @@ export async function connectToDatabase() {
   }
 }
 
+export async function insertTasker(taskerData) {
+  try {
+    const { db } = await connectToDatabase()
+    console.log('Attempting to insert tasker:', taskerData)
+    const result = await db.collection('taskers').insertOne(taskerData)
+    console.log('Tasker inserted successfully:', result.insertedId)
+    return result
+  } catch (error) {
+    console.error('Failed to insert tasker:', error)
+    throw error
+  }
+}
 export async function insertUser(userData) {
   try {
     const { db } = await connectToDatabase()

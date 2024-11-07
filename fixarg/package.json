@@ -16,6 +16,7 @@
     "@radix-ui/react-slot": "^1.1.0",
     "@sendgrid/mail": "^8.1.4",
     "add": "^2.0.6",
+    "bcryptjs": "^2.4.3",
     "button": "^1.1.1",
     "card": "^2.5.4",
     "class-variance-authority": "^0.7.0",

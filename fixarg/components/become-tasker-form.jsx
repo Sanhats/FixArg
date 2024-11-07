@@ -45,6 +45,7 @@ export default function BecomeTaskerForm() {
     skills: [],
     email: "",
     phone: "",
+    hourlyRate: "",
   })
   const [previewUrl, setPreviewUrl] = useState(null)
   const fileInputRef = useRef(null)
@@ -84,6 +85,7 @@ export default function BecomeTaskerForm() {
         skills: formData.skills,
         email: formData.email,
         phone: formData.phone,
+        hourlyRate: parseFloat(formData.hourlyRate),
       }
 
       const response = await fetch('/api/taskers', {
@@ -213,11 +215,6 @@ export default function BecomeTaskerForm() {
               </CardDescription>
             </CardHeader>
             <CardFooter className="flex flex-col sm:flex-row justify-center gap-4">
-              <DialogClose asChild>
-                <Button variant="outline" className="w-full sm:w-auto">
-                  Cerrar
-                </Button>
-              </DialogClose>
               <Button 
                 className="w-full sm:w-auto bg-[#14A800] text-white hover:bg-[#14A800]/90"
                 onClick={() => window.location.href = '/'}
@@ -359,6 +356,19 @@ export default function BecomeTaskerForm() {
                   onChange={(e) => setFormData({...formData, description: e.target.value})}
                   required
                   className="min-h-[100px]"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="hourlyRate">Precio por hora (ARS)</Label>
+                <Input
+                  id="hourlyRate"
+                  type="number"
+                  placeholder="Ej: 1000"
+                  value={formData.hourlyRate}
+                  onChange={(e) => setFormData({...formData, hourlyRate: e.target.value})}
+                  required
+                  min="0"
+                  step="0.01"
                 />
               </div>
             </div>

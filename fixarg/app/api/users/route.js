@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server';
 import { insertUser, findUserByEmail } from '@/lib/mongodb';
-
+import bcrypt from 'bcryptjs'
 export async function POST(request) {
   try {
     const userData = await request.json();
     console.log('Received user data:', userData);
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(userData.password, salt);
 
+    // Replace the plain text password with the hashed password
+    userData.password = hashedPassword;
     // Check if user already exists
     const existingUser = await findUserByEmail(userData.email);
     if (existingUser) {
