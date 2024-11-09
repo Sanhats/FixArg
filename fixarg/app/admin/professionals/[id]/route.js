@@ -1,8 +1,38 @@
+// app/api/admin/professionals/route.js
 import { NextResponse } from 'next/server'
 import { connectToDatabase } from '@/lib/mongodb'
 import { verifyToken } from '@/lib/auth'
 import { ObjectId } from 'mongodb'
 
+// GET - Obtener todos los profesionales
+export async function GET(request) {
+  try {
+    const token = request.headers.get('Authorization')?.split(' ')[1]
+    const decodedToken = verifyToken(token)
+
+    if (!decodedToken || decodedToken.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'No autorizado' },
+        { status: 401 }
+      )
+    }
+
+    const { db } = await connectToDatabase()
+    const professionals = await db.collection('trabajadores')
+      .find({})
+      .toArray()
+
+    return NextResponse.json(professionals)
+  } catch (error) {
+    console.error('Error fetching professionals:', error)
+    return NextResponse.json(
+      { error: 'Error al cargar los profesionales' },
+      { status: 500 }
+    )
+  }
+}
+
+// PATCH - Actualizar estado del profesional
 export async function PATCH(request, { params }) {
   try {
     const token = request.headers.get('Authorization')?.split(' ')[1]
@@ -45,7 +75,7 @@ export async function OPTIONS(request) {
   return new NextResponse(null, {
     status: 204,
     headers: {
-      'Access-Control-Allow-Methods': 'PATCH, OPTIONS',
+      'Access-Control-Allow-Methods': 'GET, PATCH, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       'Access-Control-Allow-Origin': '*'
     },

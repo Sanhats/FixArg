@@ -2,11 +2,14 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
-
 export async function POST(request) {
+  console.log('Env Variables Loaded:', {
+    usernameEnv: process.env.ADMIN_USERNAME,
+    passwordHashEnv: "$2a$10$MI57y.ssXPB7eBGqEB2qVerUEsZqLKOQQY7j3M0okUxUdO/PkZAWG",
+    jwtSecretEnv: process.env.JWT_SECRET
+  });
+  
   try {
-    
-    // Verificar que la solicitud sea JSON válido
     const body = await request.json().catch(() => null);
     if (!body) {
       console.error('Invalid JSON body');
@@ -18,20 +21,15 @@ export async function POST(request) {
 
     const { username, password } = body;
 
-    // Validar que username y password estén presentes
-    if (!username || !password) {
-      console.error('Missing username or password');
-      return NextResponse.json(
-        { error: 'Username and password are required' },
-        { status: 400 }
-      );
-    }
+    console.log('Received credentials:', {
+      username,
+      passwordLength: password ? password.length : 0
+    });
 
-    // Verificar variables de entorno
-    if (!process.env.ADMIN_USERNAME || !process.env.ADMIN_PASSWORD_HASH || !process.env.JWT_SECRET) {
+    if (!process.env.ADMIN_USERNAME || !"$2a$10$MI57y.ssXPB7eBGqEB2qVerUEsZqLKOQQY7j3M0okUxUdO/PkZAWG" || !process.env.JWT_SECRET) {
       console.error('Missing environment variables:', {
         hasUsername: !!process.env.ADMIN_USERNAME,
-        hasPasswordHash: !!process.env.ADMIN_PASSWORD_HASH,
+        hasPasswordHash: !!"$2a$10$MI57y.ssXPB7eBGqEB2qVerUEsZqLKOQQY7j3M0okUxUdO/PkZAWG",
         hasJwtSecret: !!process.env.JWT_SECRET,
       });
       return NextResponse.json(
@@ -40,35 +38,46 @@ export async function POST(request) {
       );
     }
 
-    // Verificar usuario
     if (username !== process.env.ADMIN_USERNAME) {
+      console.log('Invalid username');
       return NextResponse.json(
         { error: 'Invalid credentials' },
         { status: 401 }
       );
     }
+
+    console.log('Username validation successful, checking password');
 
     // Verificar contraseña
+    console.log('Password from request:', password);
+    console.log('Admin password hash:', "$2a$10$MI57y.ssXPB7eBGqEB2qVerUEsZqLKOQQY7j3M0okUxUdO/PkZAWG");
+
     const isPasswordValid = await bcrypt.compare(
       password,
-      process.env.ADMIN_PASSWORD_HASH
+    "$2a$10$MI57y.ssXPB7eBGqEB2qVerUEsZqLKOQQY7j3M0okUxUdO/PkZAWG"
+
     );
 
+    console.log('Password validation result:', isPasswordValid);
+
     if (!isPasswordValid) {
+      console.log('Invalid password');
       return NextResponse.json(
         { error: 'Invalid credentials' },
         { status: 401 }
       );
     }
 
-    // Generar token
+    console.log('Password validation successful, generating token');
+
     const token = jwt.sign(
       { username, role: 'admin' },
       process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
 
-    // Configurar headers CORS en la respuesta
+    console.log('Token generated successfully');
+
     return NextResponse.json(
       { token },
       {
@@ -80,9 +89,9 @@ export async function POST(request) {
       }
     );
   } catch (error) {
-    console.error('Login error:', error);
+    console.error('Detailed login error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: 'Internal server error', details: error.message },
       { status: 500 }
     );
   }

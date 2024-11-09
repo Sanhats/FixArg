@@ -62,7 +62,7 @@ export default function AdminPanel() {
     try {
       setLoading(true)
       setError(null)
-      const response = await fetch('/api/admin/professionals', {
+      const response = await fetch('/app/admin/professionals', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
         }

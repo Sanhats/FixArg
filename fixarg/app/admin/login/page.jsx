@@ -19,11 +19,21 @@ export default function AdminLogin() {
     setIsLoading(true)
 
     try {
+      console.log('Enviando credenciales:', {
+        username: credentials.username,
+        password: credentials.password.length + ' caracteres'
+      })
+
       const response = await fetch('/api/admin/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(credentials)
-      })
+  headers: { 
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    username: credentials.username.trim(),
+    password: credentials.password.trim()
+  })
+})
 
       const data = await response.json()
 
@@ -31,10 +41,10 @@ export default function AdminLogin() {
         localStorage.setItem('adminToken', data.token)
         router.push('/admin')
       } else {
-        setError(data.error || 'Error al iniciar sesión')
+        setError(data.error || 'Credenciales inválidas')
       }
     } catch (error) {
-      console.error('Login error:', error)
+      console.error('Error de inicio de sesión:', error)
       setError('Error al conectar con el servidor')
     } finally {
       setIsLoading(false)
@@ -61,6 +71,7 @@ export default function AdminLogin() {
                 })}
                 required
                 disabled={isLoading}
+                placeholder="admin"
               />
             </div>
             <div className="space-y-2">

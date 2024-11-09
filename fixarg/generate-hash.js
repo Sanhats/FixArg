@@ -1,6 +1,6 @@
 const bcrypt = require('bcryptjs');
 
-const password = 'admin123123'; // Reemplaza esto con tu contraseña real
+const password = 'admin123123'; // Reemplaza esto con la contraseña que deseas usar
 const saltRounds = 10;
 
 bcrypt.hash(password, saltRounds, (err, hash) => {
@@ -8,6 +8,6 @@ bcrypt.hash(password, saltRounds, (err, hash) => {
     console.error('Error al generar el hash:', err);
   } else {
     console.log('Tu hash de contraseña es:', hash);
-    console.log('Guarda este hash en tu variable de entorno ADMIN_PASSWORD_HASH');
+    console.log('Copia este hash y agrégalo a tu archivo .env.local como ADMIN_PASSWORD_HASH');
   }
 });
