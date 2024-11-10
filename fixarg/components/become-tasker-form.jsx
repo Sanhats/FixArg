@@ -486,5 +486,3 @@ export default function BecomeTaskerForm() {
     </Dialog>
   );
 }
-
-/*SDADSAD
