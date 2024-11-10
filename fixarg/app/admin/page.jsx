@@ -3,15 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+import { Trash2, ChevronDown, ChevronUp } from "lucide-react"
 import {
   Select,
   SelectContent,
@@ -19,50 +11,41 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 
 export default function AdminPanel() {
   const [professionals, setProfessionals] = useState([])
   const [filteredProfessionals, setFilteredProfessionals] = useState([])
-  const [filter, setFilter] = useState('all')
+  const [occupationFilter, setOccupationFilter] = useState('all')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [expandedProfessional, setExpandedProfessional] = useState(null)
   const router = useRouter()
-
-  useEffect(() => {
-    checkAuth()
-  }, [])
-
-  const checkAuth = async () => {
-    const token = localStorage.getItem('adminToken')
-    if (!token) {
-      router.push('/admin/login')
-      return
-    }
-
-    try {
-      const response = await fetch('/api/admin/verify', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-
-      if (!response.ok) {
-        throw new Error('Token inválido')
-      }
-
-      fetchProfessionals()
-    } catch (error) {
-      console.error('Auth error:', error)
-      localStorage.removeItem('adminToken')
-      router.push('/admin/login')
-    }
-  }
 
   const fetchProfessionals = async () => {
     try {
       setLoading(true)
       setError(null)
-      const response = await fetch('/app/admin/professionals', {
+      
+      const response = await fetch('/api/admin/professionals', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
         }
@@ -73,23 +56,56 @@ export default function AdminPanel() {
       }
 
       const data = await response.json()
+      console.log('Datos recibidos:', data)
       setProfessionals(data)
       setFilteredProfessionals(data)
     } catch (error) {
       console.error('Error:', error)
-      setError(error.message)
+      setError('Error al cargar los profesionales')
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    if (filter === 'all') {
-      setFilteredProfessionals(professionals)
-    } else {
-      setFilteredProfessionals(professionals.filter(p => p.service === filter))
+    const token = localStorage.getItem('adminToken')
+    if (!token) {
+      router.push('/admin/login')
+      return
     }
-  }, [filter, professionals])
+    fetchProfessionals()
+  }, [router])
+
+  const handleDelete = async (id) => {
+    try {
+      const response = await fetch(`/api/admin/professionals/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error('Error al eliminar el profesional')
+      }
+
+      setProfessionals(professionals.filter(p => p._id !== id))
+      setFilteredProfessionals(filteredProfessionals.filter(p => p._id !== id))
+      setExpandedProfessional(null)
+    } catch (error) {
+      console.error('Error:', error)
+      alert('Error al eliminar el profesional')
+    }
+  }
+
+  useEffect(() => {
+    const filtered = professionals.filter(p => 
+      occupationFilter === 'all' || (p.occupation && p.occupation.toLowerCase().trim() === occupationFilter.toLowerCase().trim())
+    )
+
+    console.log(`Filtrando por ocupación: ${occupationFilter}. Resultados:`, filtered)
+    setFilteredProfessionals(filtered)
+  }, [occupationFilter, professionals])
 
   const handleStatusChange = async (id, newStatus) => {
     try {
@@ -115,9 +131,8 @@ export default function AdminPanel() {
     }
   }
 
-  const handleLogout = () => {
-    localStorage.removeItem('adminToken')
-    router.push('/admin/login')
+  const toggleExpandProfessional = (id) => {
+    setExpandedProfessional(expandedProfessional === id ? null : id)
   }
 
   if (loading) {
@@ -136,75 +151,114 @@ export default function AdminPanel() {
     )
   }
 
+  const occupations = [
+    { value: 'all', label: 'Todas las ocupaciones' },
+    { value: 'ensamblaje', label: 'Ensamblaje' },
+    { value: 'montaje', label: 'Montaje' },
+    { value: 'mudanza', label: 'Mudanza' },
+    { value: 'limpieza', label: 'Limpieza' },
+    { value: 'ayuda en exteriores', label: 'Ayuda en exteriores' },
+    { value: 'reparaciones del hogar', label: 'Reparaciones del hogar' },
+    { value: 'pintura', label: 'Pintura' },
+  ]
+
   return (
     <div className="container mx-auto p-4">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Panel de Administración</h1>
-        <Button onClick={handleLogout} variant="outline">
+        <Button 
+          onClick={() => {
+            localStorage.removeItem('adminToken')
+            router.push('/admin/login')
+          }} 
+          variant="outline"
+        >
           Cerrar sesión
         </Button>
       </div>
       
       <div className="mb-4">
-        <Select value={filter} onValueChange={setFilter}>
+        <Select value={occupationFilter} onValueChange={setOccupationFilter}>
           <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Filtrar por servicio" />
+            <SelectValue placeholder="Filtrar por ocupación" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos los servicios</SelectItem>
-            <SelectItem value="ensamblaje">Ensamblaje</SelectItem>
-            <SelectItem value="montaje">Montaje</SelectItem>
-            <SelectItem value="mudanza">Mudanza</SelectItem>
-            <SelectItem value="limpieza">Limpieza</SelectItem>
-            <SelectItem value="exteriores">Ayuda en exteriores</SelectItem>
-            <SelectItem value="reparaciones">Reparaciones del Hogar</SelectItem>
-            <SelectItem value="pintura">Pintura</SelectItem>
+            {occupations.map((occupation) => (
+              <SelectItem key={occupation.value} value={occupation.value}>
+                {occupation.label}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
 
-      {professionals.length === 0 ? (
+      {filteredProfessionals.length === 0 ? (
         <div className="text-center py-8 text-gray-500">
-          No hay profesionales registrados
+          No hay profesionales registrados para esta ocupación
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nombre</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Servicio</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredProfessionals.map((professional) => (
-                <TableRow key={professional._id}>
-                  <TableCell>{professional.name}</TableCell>
-                  <TableCell>{professional.email}</TableCell>
-                  <TableCell>{professional.service}</TableCell>
-                  <TableCell>{professional.status}</TableCell>
-                  <TableCell>
-                    <Select 
-                      value={professional.status}
-                      onValueChange={(value) => handleStatusChange(professional._id, value)}
-                    >
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pending">Pendiente</SelectItem>
-                        <SelectItem value="approved">Aprobado</SelectItem>
-                        <SelectItem value="rejected">Rechazado</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        <div className="space-y-4">
+          {filteredProfessionals.map((professional) => (
+            <Card key={professional._id} className="w-full">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div>
+                  <CardTitle className="text-sm font-medium">
+                    {professional.firstName} {professional.lastName}
+                  </CardTitle>
+                  <CardDescription>
+                    <Badge variant="outline">{professional.occupation || 'Ocupación no especificada'}</Badge>
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => toggleExpandProfessional(professional._id)}
+                >
+                  {expandedProfessional === professional._id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <div className="text-sm text-muted-foreground">
+                  {professional.email}
+                </div>
+                {expandedProfessional === professional._id && (
+                  <div className="mt-4 space-y-2">
+                    <p><strong>Teléfono:</strong> {professional.phone || 'No especificado'}</p>
+                    <p><strong>Precio/hora:</strong> {professional.hourlyRate ? `$${professional.hourlyRate}` : 'No especificado'}</p>
+                    <p><strong>Descripción:</strong> {professional.description || 'Sin descripción'}</p>
+                    <p><strong>Domicilio:</strong> {professional.street && professional.streetNumber ? 
+                      `${professional.street} ${professional.streetNumber}, ${professional.locality}` : 
+                      'Dirección no especificada'}
+                    </p>
+                    <div className="flex space-x-4">
+                      <Button variant="outline" size="sm" onClick={() => handleStatusChange(professional._id, professional.status === 'active' ? 'inactive' : 'active')}>
+                        {professional.status === 'active' ? 'Desactivar' : 'Activar'}
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="destructive" size="sm">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>¿Está seguro?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Esta acción no puede deshacerse. Esto eliminará permanentemente al profesional.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDelete(professional._id)}>Eliminar</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ))}
         </div>
       )}
     </div>
