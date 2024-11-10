@@ -1,16 +1,16 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { Button } from "@/components/ui/button"
-import { Trash2, ChevronDown, ChevronUp } from "lucide-react"
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { Button } from "@/components/ui/button";
+import { Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,91 +21,58 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 export default function AdminPanel() {
-  const [professionals, setProfessionals] = useState([])
-  const [filteredProfessionals, setFilteredProfessionals] = useState([])
-  const [occupationFilter, setOccupationFilter] = useState('all')
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [expandedProfessional, setExpandedProfessional] = useState(null)
-  const router = useRouter()
+  const [professionals, setProfessionals] = useState([]);
+  const [occupationFilter, setOccupationFilter] = useState('all');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [expandedProfessional, setExpandedProfessional] = useState(null);
+  const [activeTab, setActiveTab] = useState('pending'); // Estado para la pestaña activa
+  const router = useRouter();
 
   const fetchProfessionals = async () => {
     try {
-      setLoading(true)
-      setError(null)
+      setLoading(true);
+      setError(null);
       
       const response = await fetch('/api/admin/professionals', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
         }
-      })
+      });
 
       if (!response.ok) {
-        throw new Error('Error al cargar los profesionales')
+        throw new Error('Error al cargar los profesionales');
       }
 
-      const data = await response.json()
-      console.log('Datos recibidos:', data)
-      setProfessionals(data)
-      setFilteredProfessionals(data)
+      const data = await response.json();
+      setProfessionals(data);
     } catch (error) {
-      console.error('Error:', error)
-      setError('Error al cargar los profesionales')
+      console.error('Error:', error);
+      setError('Error al cargar los profesionales');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    const token = localStorage.getItem('adminToken')
+    const token = localStorage.getItem('adminToken');
     if (!token) {
-      router.push('/admin/login')
-      return
+      router.push('/admin/login');
+      return;
     }
-    fetchProfessionals()
-  }, [router])
-
-  const handleDelete = async (id) => {
-    try {
-      const response = await fetch(`/api/admin/professionals/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
-        }
-      })
-
-      if (!response.ok) {
-        throw new Error('Error al eliminar el profesional')
-      }
-
-      setProfessionals(professionals.filter(p => p._id !== id))
-      setFilteredProfessionals(filteredProfessionals.filter(p => p._id !== id))
-      setExpandedProfessional(null)
-    } catch (error) {
-      console.error('Error:', error)
-      alert('Error al eliminar el profesional')
-    }
-  }
-
-  useEffect(() => {
-    const filtered = professionals.filter(p => 
-      occupationFilter === 'all' || (p.occupation && p.occupation.toLowerCase().trim() === occupationFilter.toLowerCase().trim())
-    )
-
-    console.log(`Filtrando por ocupación: ${occupationFilter}. Resultados:`, filtered)
-    setFilteredProfessionals(filtered)
-  }, [occupationFilter, professionals])
+    fetchProfessionals();
+  }, [router]);
 
   const handleStatusChange = async (id, newStatus) => {
     try {
@@ -116,31 +83,52 @@ export default function AdminPanel() {
           'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
         },
         body: JSON.stringify({ status: newStatus })
-      })
+      });
 
       if (!response.ok) {
-        throw new Error('Error al actualizar el estado')
+        throw new Error('Error al actualizar el estado');
       }
 
       setProfessionals(professionals.map(p => 
         p._id === id ? { ...p, status: newStatus } : p
-      ))
+      ));
     } catch (error) {
-      console.error('Error:', error)
-      alert('Error al actualizar el estado del profesional')
+      console.error('Error:', error);
+      alert('Error al actualizar el estado del profesional');
     }
-  }
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      const response = await fetch(`/api/admin/professionals/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al eliminar el profesional');
+      }
+
+      setProfessionals(professionals.filter(p => p._id !== id));
+      setExpandedProfessional(null);
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Error al eliminar el profesional');
+    }
+  };
 
   const toggleExpandProfessional = (id) => {
-    setExpandedProfessional(expandedProfessional === id ? null : id)
-  }
+    setExpandedProfessional(expandedProfessional === id ? null : id);
+  };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-lg">Cargando...</div>
       </div>
-    )
+    );
   }
 
   if (error) {
@@ -148,8 +136,12 @@ export default function AdminPanel() {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-red-500">{error}</div>
       </div>
-    )
+    );
   }
+
+  const filteredProfessionals = professionals.filter(
+    (p) => (activeTab === 'pending' && p.status === 'pending') || (activeTab === 'approved' && p.status === 'approved')
+  );
 
   const occupations = [
     { value: 'all', label: 'Todas las ocupaciones' },
@@ -160,7 +152,7 @@ export default function AdminPanel() {
     { value: 'ayuda en exteriores', label: 'Ayuda en exteriores' },
     { value: 'reparaciones del hogar', label: 'Reparaciones del hogar' },
     { value: 'pintura', label: 'Pintura' },
-  ]
+  ];
 
   return (
     <div className="container mx-auto p-4">
@@ -168,15 +160,24 @@ export default function AdminPanel() {
         <h1 className="text-2xl font-bold">Panel de Administración</h1>
         <Button 
           onClick={() => {
-            localStorage.removeItem('adminToken')
-            router.push('/admin/login')
+            localStorage.removeItem('adminToken');
+            router.push('/admin/login');
           }} 
           variant="outline"
         >
           Cerrar sesión
         </Button>
       </div>
-      
+
+      <div className="flex space-x-4 mb-4">
+        <Button variant={activeTab === 'pending' ? 'solid' : 'outline'} onClick={() => setActiveTab('pending')}>
+          Pendientes
+        </Button>
+        <Button variant={activeTab === 'approved' ? 'solid' : 'outline'} onClick={() => setActiveTab('approved')}>
+          Aprobados
+        </Button>
+      </div>
+
       <div className="mb-4">
         <Select value={occupationFilter} onValueChange={setOccupationFilter}>
           <SelectTrigger className="w-[180px]">
@@ -194,7 +195,7 @@ export default function AdminPanel() {
 
       {filteredProfessionals.length === 0 ? (
         <div className="text-center py-8 text-gray-500">
-          No hay profesionales registrados para esta ocupación
+          No hay profesionales en esta lista
         </div>
       ) : (
         <div className="space-y-4">
@@ -226,13 +227,15 @@ export default function AdminPanel() {
                     <p><strong>Teléfono:</strong> {professional.phone || 'No especificado'}</p>
                     <p><strong>Precio/hora:</strong> {professional.hourlyRate ? `$${professional.hourlyRate}` : 'No especificado'}</p>
                     <p><strong>Descripción:</strong> {professional.description || 'Sin descripción'}</p>
-                    <p><strong>Domicilio:</strong> {professional.street && professional.streetNumber ? 
-                      `${professional.street} ${professional.streetNumber}, ${professional.locality}` : 
-                      'Dirección no especificada'}
+                    <p><strong>Provincia:</strong> {professional.province || 'Dirección no especificada'}
                     </p>
                     <div className="flex space-x-4">
-                      <Button variant="outline" size="sm" onClick={() => handleStatusChange(professional._id, professional.status === 'active' ? 'inactive' : 'active')}>
-                        {professional.status === 'active' ? 'Desactivar' : 'Activar'}
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleStatusChange(professional._id, professional.status === 'pending' ? 'approved' : 'pending')}
+                      >
+                        {professional.status === 'pending' ? 'Aprobar' : 'Pendiente'}
                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
@@ -249,7 +252,9 @@ export default function AdminPanel() {
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => handleDelete(professional._id)}>Eliminar</AlertDialogAction>
+                            <AlertDialogAction onClick={() => handleDelete(professional._id)}>
+                              Eliminar
+                            </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
@@ -262,5 +267,5 @@ export default function AdminPanel() {
         </div>
       )}
     </div>
-  )
+  );
 }

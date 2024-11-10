@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -31,8 +31,11 @@ import {
 } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Check, Upload, ChevronRight, Home } from "lucide-react"
-
+const provinces = [
+  "Tucumán"
+]
 export default function BecomeTaskerForm() {
+  
   const [step, setStep] = useState(1)
   const [progress, setProgress] = useState(25)
   const [formData, setFormData] = useState({
@@ -46,6 +49,7 @@ export default function BecomeTaskerForm() {
     email: "",
     phone: "",
     hourlyRate: "",
+    province: "",
   })
   const [previewUrl, setPreviewUrl] = useState(null)
   const fileInputRef = useRef(null)
@@ -86,6 +90,7 @@ export default function BecomeTaskerForm() {
         email: formData.email,
         phone: formData.phone,
         hourlyRate: parseFloat(formData.hourlyRate),
+        province:formData.province,
       }
 
       const response = await fetch('/api/taskers', {
@@ -357,6 +362,24 @@ export default function BecomeTaskerForm() {
                   required
                   className="min-h-[100px]"
                 />
+                <div className="space-y-2">
+            <Label htmlFor="province" className="text-sm sm:text-base">Provincia</Label>
+            <Select
+              value={formData.province}
+              onValueChange={(value) => setFormData({...formData, province: value})}
+            >
+              <SelectTrigger className="text-sm sm:text-base">
+                <SelectValue placeholder="Selecciona una provincia" />
+              </SelectTrigger>
+              <SelectContent>
+                {provinces.map((province) => (
+                  <SelectItem key={province} value={province} className="text-sm sm:text-base">
+                    {province}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="hourlyRate">Precio por hora (ARS)</Label>
