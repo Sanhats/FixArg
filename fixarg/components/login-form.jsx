@@ -30,31 +30,28 @@ export default function LoginForm() {
     setSubmitError(null)
     
     try {
-      const response = await fetch('/api/login', {
+      const response = await fetch('/api/users/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
         },
         body: JSON.stringify(formData),
       })
 
-      // Verificar si la respuesta es JSON
-      const contentType = response.headers.get("content-type")
-      if (!contentType || !contentType.includes("application/json")) {
-        throw new Error("Error del servidor: Respuesta no válida")
-      }
-
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.message || 'Credenciales inválidas')
+        throw new Error(data.message || 'Error al iniciar sesión')
       }
 
       setSubmitSuccess(true)
-      // Aquí podrías guardar el token en localStorage o usar un manejador de estado global
       localStorage.setItem('authToken', data.token)
-      window.location.href = '/' // O redirigir a donde necesites
+      localStorage.setItem('userData', JSON.stringify(data.user))
+      
+      // Esperar un momento antes de redirigir
+      setTimeout(() => {
+        window.location.href = '/'
+      }, 1500)
     } catch (error) {
       console.error('Login error:', error)
       setSubmitError(error.message || 'Error al iniciar sesión. Por favor, intenta nuevamente.')
