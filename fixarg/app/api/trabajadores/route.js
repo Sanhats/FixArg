@@ -9,10 +9,7 @@ export async function GET(request) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    const decodedToken = verifyToken(token)
-    if (!decodedToken) {
-      return NextResponse.json({ error: 'Token inválido' }, { status: 401 })
-    }
+    
 
     const { db } = await connectToDatabase()
     
