@@ -1,10 +1,9 @@
 "use client"
 
-import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
-import { Search, Wrench, Drill, Truck, Brush, Hammer, PaintBucket, Flame, Leaf, Menu, X } from "lucide-react"
+import { Search, Wrench, Drill, Truck, Brush, Hammer, PaintBucket, Leaf, Menu } from 'lucide-react'
 import {
   Sheet,
   SheetContent,
@@ -15,8 +14,11 @@ import {
 import BecomeTaskerForm from "@/components/become-tasker-form"
 import UserRegistrationForm from "@/components/user-registration-form"
 import LoginForm from "@/components/login-form"
+import { useAuth } from '@/lib/AuthContext'
 
 export default function HomePage() {
+  const { isLoggedIn, user, logout } = useAuth()
+
   return (
     <div className="min-h-screen bg-white">
       <header className="border-b sticky top-0 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60 z-50">
@@ -27,14 +29,29 @@ export default function HomePage() {
             </Link>
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center gap-4 text-[#71816D]">
-              <Button variant="ghost">Servicios</Button>
-              <UserRegistrationForm />
-              <LoginForm />
-              <BecomeTaskerForm />
+              <Link href="/servicios">
+                <Button variant="ghost" className="mr-2">Servicios</Button>
+              </Link>
+              {isLoggedIn ? (
+                <>
+                  <span>Bienvenido, {user?.firstName}</span>
+                  <Button onClick={logout} variant="outline">Cerrar sesión</Button>
+                </>
+              ) : (
+                <>
+                  <UserRegistrationForm />
+                  <LoginForm />
+                  <BecomeTaskerForm />
+                </>
+              )}
             </div>
             {/* Mobile Navigation */}
             <div className="md:hidden flex items-center gap-2">
-              <BecomeTaskerForm />
+              {isLoggedIn ? (
+                <Button onClick={logout} variant="outline">Cerrar sesión</Button>
+              ) : (
+                <BecomeTaskerForm />
+              )}
               <Sheet>
                 <SheetTrigger asChild>
                   <Button variant="ghost" size="icon" className="md:hidden">
@@ -50,8 +67,17 @@ export default function HomePage() {
                     <Button variant="ghost" className="w-full justify-start">
                       Servicios
                     </Button>
-                    <UserRegistrationForm />
-                    <LoginForm />
+                    {isLoggedIn ? (
+                      <>
+                        <span>Bienvenido, {user?.firstName}</span>
+                        <Button onClick={logout} variant="outline">Cerrar sesión</Button>
+                      </>
+                    ) : (
+                      <>
+                        <UserRegistrationForm />
+                        <LoginForm />
+                      </>
+                    )}
                   </div>
                 </SheetContent>
               </Sheet>

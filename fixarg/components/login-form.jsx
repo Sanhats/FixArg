@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from 'next/navigation'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -12,7 +13,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Card, CardContent } from "@/components/ui/card"
+import { useAuth } from '@/lib/AuthContext'
 
 export default function LoginForm() {
   const [formData, setFormData] = useState({
@@ -21,8 +22,9 @@ export default function LoginForm() {
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState(null)
-  const [submitSuccess, setSubmitSuccess] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
+  const router = useRouter()
+  const { login } = useAuth()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -44,39 +46,15 @@ export default function LoginForm() {
         throw new Error(data.message || 'Error al iniciar sesión')
       }
 
-      setSubmitSuccess(true)
-      localStorage.setItem('authToken', data.token)
-      localStorage.setItem('userData', JSON.stringify(data.user))
-      
-      // Esperar un momento antes de redirigir
-      setTimeout(() => {
-        window.location.href = '/'
-      }, 1500)
+      login(data.token, data.user)
+      setIsOpen(false)
+      router.push('/')
     } catch (error) {
       console.error('Login error:', error)
       setSubmitError(error.message || 'Error al iniciar sesión. Por favor, intenta nuevamente.')
     } finally {
       setIsSubmitting(false)
     }
-  }
-
-  if (submitSuccess) {
-    return (
-      <Dialog open onOpenChange={() => setIsOpen(false)}>
-        <DialogContent className="sm:max-w-[425px]">
-          <Card>
-            <CardContent className="pt-6">
-              <DialogHeader>
-                <DialogTitle>Inicio de sesión exitoso</DialogTitle>
-                <DialogDescription>
-                  Serás redirigido en breve...
-                </DialogDescription>
-              </DialogHeader>
-            </CardContent>
-          </Card>
-        </DialogContent>
-      </Dialog>
-    )
   }
 
   return (
