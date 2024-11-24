@@ -8,6 +8,16 @@ import { Input } from "@/components/ui/input"
 import { useRouter } from 'next/navigation'
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from '@/lib/AuthContext'
+import SolicitudTrabajoForm from '@/components/solicitud-trabajo-form'
+import Chat from '@/components/chat'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 
 export default function ServiciosPage() {
   const [trabajadores, setTrabajadores] = useState([])
@@ -17,6 +27,9 @@ export default function ServiciosPage() {
   const [filtroServicio, setFiltroServicio] = useState('todos')
   const [ordenPrecio, setOrdenPrecio] = useState('ninguno')
   const [busqueda, setBusqueda] = useState('')
+  const [selectedTrabajador, setSelectedTrabajador] = useState(null)
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [solicitudActiva, setSolicitudActiva] = useState(null)
   const router = useRouter()
   const { isLoggedIn, getToken } = useAuth()
 
@@ -82,6 +95,32 @@ export default function ServiciosPage() {
     setFilteredTrabajadores(result)
   }, [trabajadores, filtroServicio, ordenPrecio, busqueda])
 
+  const handleSolicitudSubmit = async (data) => {
+    try {
+      const token = getToken()
+      const response = await fetch('/api/solicitudes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(data)
+      })
+
+      if (!response.ok) {
+        throw new Error('Error al enviar la solicitud')
+      }
+
+      const result = await response.json()
+      console.log('Solicitud enviada:', result)
+      setSolicitudActiva(result.id)
+      setIsDialogOpen(false)
+    } catch (error) {
+      console.error('Error:', error)
+      alert('Hubo un error al enviar la solicitud. Por favor, intenta de nuevo.')
+    }
+  }
+
   if (loading) return <div className="flex items-center justify-center min-h-screen">Cargando...</div>
   if (error) return <div className="flex items-center justify-center min-h-screen text-red-500">{error}</div>
 
@@ -102,7 +141,7 @@ export default function ServiciosPage() {
             <SelectItem value="plomeria">Plomería</SelectItem>
             <SelectItem value="electricidad">Electricidad</SelectItem>
             <SelectItem value="carpinteria">Carpintería</SelectItem>
-            <SelectItem value="pintar">Pintura</SelectItem>
+            <SelectItem value="pintura">Pintura</SelectItem>
           </SelectContent>
         </Select>
 
@@ -158,14 +197,33 @@ export default function ServiciosPage() {
                     </p>
                   </div>
                 </div>
-                <Button 
-                  className="w-full bg-[#324376] hover:bg-[#324376]/90"
-                  onClick={() => {
-                    console.log('Contactar a:', trabajador.firstName)
-                  }}
-                >
-                  Contactar
-                </Button>
+                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button 
+                      className="w-full bg-[#324376] hover:bg-[#324376]/90"
+                      onClick={() => setSelectedTrabajador(trabajador)}
+                    >
+                      Contactar
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                      <DialogTitle>Solicitar servicio</DialogTitle>
+                      <DialogDescription>
+                        Completa el formulario para solicitar el servicio de {selectedTrabajador?.displayName || `${selectedTrabajador?.firstName} ${selectedTrabajador?.lastName}`}
+                      </DialogDescription>
+                    </DialogHeader>
+                    {solicitudActiva ? (
+                      <Chat solicitudId={solicitudActiva} trabajadorId={selectedTrabajador?._id} />
+                    ) : (
+                      <SolicitudTrabajoForm 
+                        trabajador={selectedTrabajador}
+                        onSubmit={handleSolicitudSubmit}
+                        onCancel={() => setIsDialogOpen(false)}
+                      />
+                    )}
+                  </DialogContent>
+                </Dialog>
               </CardContent>
             </Card>
           ))
