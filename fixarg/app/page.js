@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import Link from "next/link"
+import { useRouter } from 'next/navigation'
 import { Search, Wrench, Drill, Truck, Brush, Hammer, PaintBucket, Leaf, Menu } from 'lucide-react'
 import {
   Sheet,
@@ -18,6 +19,16 @@ import { useAuth } from '@/lib/AuthContext'
 
 export default function HomePage() {
   const { isLoggedIn, user, logout } = useAuth()
+  const router = useRouter()
+
+  const handleServiciosClick = (e) => {
+    e.preventDefault()
+    if (isLoggedIn) {
+      router.push('/servicios')
+    } else {
+      alert('Por favor, inicia sesión para ver los servicios.')
+    }
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -29,9 +40,9 @@ export default function HomePage() {
             </Link>
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center gap-4 text-[#71816D]">
-              <Link href="/servicios">
-                <Button variant="ghost" className="mr-2">Servicios</Button>
-              </Link>
+              <Button variant="ghost" className="mr-2" onClick={handleServiciosClick}>
+                Servicios
+              </Button>
               {isLoggedIn ? (
                 <>
                   <span>Bienvenido, {user?.firstName}</span>
@@ -64,7 +75,11 @@ export default function HomePage() {
                     <SheetTitle>Menú</SheetTitle>
                   </SheetHeader>
                   <div className="flex flex-col gap-4 mt-4">
-                    <Button variant="ghost" className="w-full justify-start">
+                    <Button 
+                      variant="ghost" 
+                      className="w-full justify-start"
+                      onClick={handleServiciosClick}
+                    >
                       Servicios
                     </Button>
                     {isLoggedIn ? (

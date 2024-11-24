@@ -32,8 +32,12 @@ export function AuthProvider({ children }) {
     setUser(null)
   }
 
+  const getToken = () => {
+    return Cookies.get('authToken')
+  }
+
   return (
-    <AuthContext.Provider value={{ isLoggedIn, user, login, logout }}>
+    <AuthContext.Provider value={{ isLoggedIn, user, login, logout, getToken }}>
       {children}
     </AuthContext.Provider>
   )

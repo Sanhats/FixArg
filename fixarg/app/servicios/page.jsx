@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useRouter } from 'next/navigation'
 import { Badge } from "@/components/ui/badge"
+import { useAuth } from '@/lib/AuthContext'
 
 export default function ServiciosPage() {
   const [trabajadores, setTrabajadores] = useState([])
@@ -17,18 +18,22 @@ export default function ServiciosPage() {
   const [ordenPrecio, setOrdenPrecio] = useState('ninguno')
   const [busqueda, setBusqueda] = useState('')
   const router = useRouter()
+  const { isLoggedIn, getToken } = useAuth()
 
   useEffect(() => {
-    const token = localStorage.getItem('authToken')
-    if (!token) {
+    if (!isLoggedIn) {
       router.push('/')
       return
     }
-    fetchTrabajadores(token)
-  }, [router])
+    fetchTrabajadores()
+  }, [isLoggedIn, router])
 
-  const fetchTrabajadores = async (token) => {
+  const fetchTrabajadores = async () => {
     try {
+      const token = getToken()
+      if (!token) {
+        throw new Error('No se encontró el token de autenticación')
+      }
       const response = await fetch('/api/trabajadores', {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -43,7 +48,7 @@ export default function ServiciosPage() {
       setFilteredTrabajadores(data)
     } catch (error) {
       console.error('Error:', error)
-      setError('Error al cargar los trabajadores')
+      setError(error.message || 'Error al cargar los trabajadores')
     } finally {
       setLoading(false)
     }
@@ -53,7 +58,9 @@ export default function ServiciosPage() {
     let result = [...trabajadores]
 
     if (filtroServicio !== 'todos') {
-      result = result.filter(t => t.service && t.service.toLowerCase() === filtroServicio.toLowerCase())
+      result = result.filter(t => 
+        (t.service || t.occupation)?.toLowerCase() === filtroServicio.toLowerCase()
+      )
     }
 
     if (busqueda) {
@@ -62,7 +69,7 @@ export default function ServiciosPage() {
         t.firstName?.toLowerCase().includes(searchTerm) ||
         t.lastName?.toLowerCase().includes(searchTerm) ||
         t.description?.toLowerCase().includes(searchTerm) ||
-        t.service?.toLowerCase().includes(searchTerm)
+        (t.service || t.occupation)?.toLowerCase().includes(searchTerm)
       )
     }
 
@@ -89,13 +96,13 @@ export default function ServiciosPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="todos">Todos los servicios</SelectItem>
-            <SelectItem value="ensamblaje">Ensamblaje</SelectItem>
-            <SelectItem value="montaje">Montaje</SelectItem>
             <SelectItem value="mudanza">Mudanza</SelectItem>
             <SelectItem value="limpieza">Limpieza</SelectItem>
-            <SelectItem value="exteriores">Ayuda en exteriores</SelectItem>
-            <SelectItem value="reparaciones">Reparaciones del Hogar</SelectItem>
-            <SelectItem value="pintura">Pintura</SelectItem>
+            <SelectItem value="jardineria">Jardinería</SelectItem>
+            <SelectItem value="plomeria">Plomería</SelectItem>
+            <SelectItem value="electricidad">Electricidad</SelectItem>
+            <SelectItem value="carpinteria">Carpintería</SelectItem>
+            <SelectItem value="pintar">Pintura</SelectItem>
           </SelectContent>
         </Select>
 
@@ -129,14 +136,16 @@ export default function ServiciosPage() {
             <Card key={trabajador._id} className="flex flex-col">
               <CardHeader>
                 <CardTitle className="text-xl">
-                  {trabajador.firstName} {trabajador.lastName}
+                  {trabajador.displayName || `${trabajador.firstName} ${trabajador.lastName}`}
                 </CardTitle>
               </CardHeader>
               <CardContent className="flex-1 space-y-4">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="font-semibold">Servicio:</span>
-                    <Badge variant="secondary">{trabajador.service || 'No especificado'}</Badge>
+                    <Badge variant="secondary">
+                      {trabajador.service || trabajador.occupation || 'No especificado'}
+                    </Badge>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="font-semibold">Precio por hora:</span>
@@ -144,7 +153,9 @@ export default function ServiciosPage() {
                   </div>
                   <div>
                     <span className="font-semibold">Descripción:</span>
-                    <p className="mt-1 text-sm text-gray-600">{trabajador.description || 'Sin descripción'}</p>
+                    <p className="mt-1 text-sm text-gray-600">
+                      {trabajador.description || 'Sin descripción'}
+                    </p>
                   </div>
                 </div>
                 <Button 
