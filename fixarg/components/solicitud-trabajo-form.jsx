@@ -1,47 +1,67 @@
 'use client'
 
-import { useState } from 'react'
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useAuth } from '@/lib/AuthContext'
 
-export default function SolicitudTrabajoForm({ trabajador, onSubmit, onCancel }) {
+export default function SolicitudTrabajoForm({ trabajador, usuario, onSubmit, onCancel }) {
   const [formData, setFormData] = useState({
     descripcion: '',
     fecha: '',
     hora: ''
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const { user } = useAuth()
+  const [error, setError] = useState(null)
+  const { getToken } = useAuth()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setIsSubmitting(true)
+    setError(null)
 
     try {
+      // Validar que tenemos toda la información necesaria
+      if (!trabajador?._id || !usuario?._id) {
+        throw new Error('Información de usuario o trabajador no disponible')
+      }
+
+      // Validar que todos los campos estén completos
+      if (!formData.descripcion || !formData.fecha || !formData.hora) {
+        throw new Error('Por favor, complete todos los campos')
+      }
+
+      const token = getToken()
+      if (!token) {
+        throw new Error('No se encontró el token de autenticación')
+      }
+
       const response = await fetch('/api/solicitudes', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          ...formData,
+          descripcion: formData.descripcion,
+          fecha: formData.fecha,
+          hora: formData.hora,
           trabajadorId: trabajador._id,
-          usuarioId: user._id,
-          estado: 'pendiente'
+          usuarioId: usuario._id,
         }),
       })
 
+      const data = await response.json()
+
       if (!response.ok) {
-        throw new Error('Error al enviar la solicitud')
+        throw new Error(data.error || 'Error al enviar la solicitud')
       }
 
-      const data = await response.json()
       onSubmit(data)
     } catch (error) {
       console.error('Error:', error)
-      alert('Hubo un error al enviar la solicitud. Por favor, intenta de nuevo.')
+      setError(error.message)
     } finally {
       setIsSubmitting(false)
     }
@@ -50,7 +70,7 @@ export default function SolicitudTrabajoForm({ trabajador, onSubmit, onCancel })
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label htmlFor="descripcion" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="descripcion" className="block text-sm font-medium text-gray-700 mb-1">
           Descripción del trabajo
         </label>
         <Textarea
@@ -58,11 +78,12 @@ export default function SolicitudTrabajoForm({ trabajador, onSubmit, onCancel })
           value={formData.descripcion}
           onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
           required
-          className="mt-1"
+          placeholder="Describe el trabajo que necesitas..."
+          className="min-h-[100px]"
         />
       </div>
       <div>
-        <label htmlFor="fecha" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="fecha" className="block text-sm font-medium text-gray-700 mb-1">
           Fecha preferida
         </label>
         <Input
@@ -71,11 +92,11 @@ export default function SolicitudTrabajoForm({ trabajador, onSubmit, onCancel })
           value={formData.fecha}
           onChange={(e) => setFormData({ ...formData, fecha: e.target.value })}
           required
-          className="mt-1"
+          min={new Date().toISOString().split('T')[0]}
         />
       </div>
       <div>
-        <label htmlFor="hora" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="hora" className="block text-sm font-medium text-gray-700 mb-1">
           Hora preferida
         </label>
         <Input
@@ -84,14 +105,22 @@ export default function SolicitudTrabajoForm({ trabajador, onSubmit, onCancel })
           value={formData.hora}
           onChange={(e) => setFormData({ ...formData, hora: e.target.value })}
           required
-          className="mt-1"
         />
       </div>
+      {error && (
+        <div className="text-red-500 text-sm bg-red-50 p-3 rounded-md">
+          {error}
+        </div>
+      )}
       <div className="flex justify-end space-x-2">
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancelar
         </Button>
-        <Button type="submit" disabled={isSubmitting}>
+        <Button 
+          type="submit" 
+          disabled={isSubmitting}
+          className="bg-[#324376] hover:bg-[#324376]/90"
+        >
           {isSubmitting ? 'Enviando...' : 'Enviar solicitud'}
         </Button>
       </div>

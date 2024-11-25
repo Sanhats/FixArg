@@ -348,7 +348,7 @@ export default function BecomeTaskerForm() {
                     <SelectItem value="limpieza">Limpieza</SelectItem>
                     <SelectItem value="ayuda en exteriores">Ayuda en exteriores</SelectItem>
                     <SelectItem value="reparaciones del hogar">Reparaciones del Hogar</SelectItem>
-                    <SelectItem value="pintar">Pintura</SelectItem>
+                    <SelectItem value="pintura">Pintura</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

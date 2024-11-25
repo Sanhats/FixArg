@@ -5,19 +5,40 @@ import { ObjectId } from 'mongodb'
 
 export async function POST(request) {
   try {
-    const token = request.headers.get('Authorization')?.split(' ')[1]
-    if (!token) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    // Verificar el token de autorización
+    const authHeader = request.headers.get('Authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Token de autorización no proporcionado' }, { status: 401 })
     }
 
+    const token = authHeader.split('Bearer ')[1]
     const decodedToken = verifyToken(token)
+    
     if (!decodedToken) {
       return NextResponse.json({ error: 'Token inválido' }, { status: 401 })
     }
 
-    const { db } = await connectToDatabase()
     const body = await request.json()
+    console.log('Datos recibidos en API:', body) // Para debugging
 
+    // Validar los campos requeridos
+    if (!body.descripcion || !body.fecha || !body.hora || !body.trabajadorId || !body.usuarioId) {
+      const missingFields = []
+      if (!body.descripcion) missingFields.push('descripción')
+      if (!body.fecha) missingFields.push('fecha')
+      if (!body.hora) missingFields.push('hora')
+      if (!body.trabajadorId) missingFields.push('trabajadorId')
+      if (!body.usuarioId) missingFields.push('usuarioId')
+
+      return NextResponse.json({ 
+        error: 'Faltan datos requeridos', 
+        missingFields 
+      }, { status: 400 })
+    }
+
+    const { db } = await connectToDatabase()
+
+    // Crear el objeto de solicitud con los campos validados
     const solicitud = {
       descripcion: body.descripcion,
       fecha: body.fecha,
@@ -30,28 +51,34 @@ export async function POST(request) {
 
     const result = await db.collection('solicitudes').insertOne(solicitud)
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       id: result.insertedId,
       solicitud: {
         ...solicitud,
         _id: result.insertedId
       }
     })
+
   } catch (error) {
     console.error('Error al crear solicitud:', error)
-    return NextResponse.json({ error: 'Error del servidor' }, { status: 500 })
+    return NextResponse.json({ 
+      error: 'Error al procesar la solicitud',
+      details: error.message 
+    }, { status: 500 })
   }
 }
 
 export async function GET(request) {
   try {
-    const token = request.headers.get('Authorization')?.split(' ')[1]
-    if (!token) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    const authHeader = request.headers.get('Authorization')
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Token de autorización no proporcionado' }, { status: 401 })
     }
 
+    const token = authHeader.split(' ')[1]
     const decodedToken = verifyToken(token)
+    
     if (!decodedToken) {
       return NextResponse.json({ error: 'Token inválido' }, { status: 401 })
     }
@@ -78,7 +105,10 @@ export async function GET(request) {
     return NextResponse.json(solicitudes)
   } catch (error) {
     console.error('Error al obtener solicitudes:', error)
-    return NextResponse.json({ error: 'Error del servidor' }, { status: 500 })
+    return NextResponse.json({ 
+      error: 'Error al obtener las solicitudes',
+      details: error.message 
+    }, { status: 500 })
   }
 }
 

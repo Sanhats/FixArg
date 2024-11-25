@@ -5,18 +5,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { useRouter } from 'next/navigation'
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from '@/lib/AuthContext'
-import SolicitudTrabajoForm from '@/components/solicitud-trabajo-form'
-import Chat from '@/components/chat'
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 
 export default function ServiciosPage() {
@@ -29,17 +27,27 @@ export default function ServiciosPage() {
   const [busqueda, setBusqueda] = useState('')
   const [selectedTrabajador, setSelectedTrabajador] = useState(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [solicitudActiva, setSolicitudActiva] = useState(null)
+  const [formData, setFormData] = useState({
+    descripcion: '',
+    fecha: '',
+    hora: ''
+  })
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [formError, setFormError] = useState(null)
+  
   const router = useRouter()
-  const { isLoggedIn, getToken } = useAuth()
+  const { isLoggedIn, getToken, user, isLoading } = useAuth()
 
   useEffect(() => {
-    if (!isLoggedIn) {
+    if (!isLoading && !isLoggedIn) {
       router.push('/')
       return
     }
-    fetchTrabajadores()
-  }, [isLoggedIn, router])
+    
+    if (isLoggedIn && user) {
+      fetchTrabajadores()
+    }
+  }, [isLoggedIn, isLoading, user, router])
 
   const fetchTrabajadores = async () => {
     try {
@@ -56,7 +64,6 @@ export default function ServiciosPage() {
         throw new Error('Error al cargar los trabajadores')
       }
       const data = await response.json()
-      console.log('Datos recibidos:', data)
       setTrabajadores(data)
       setFilteredTrabajadores(data)
     } catch (error) {
@@ -95,33 +102,74 @@ export default function ServiciosPage() {
     setFilteredTrabajadores(result)
   }, [trabajadores, filtroServicio, ordenPrecio, busqueda])
 
-  const handleSolicitudSubmit = async (data) => {
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+    setFormError(null)
+
     try {
+      if (!user?._id) {
+        throw new Error('Usuario no autenticado')
+      }
+
+      if (!selectedTrabajador?._id) {
+        throw new Error('No se ha seleccionado un trabajador')
+      }
+
       const token = getToken()
+      if (!token) {
+        throw new Error('No se encontró el token de autenticación')
+      }
+
+      console.log('Enviando solicitud con:', {
+        usuario: user,
+        trabajador: selectedTrabajador,
+        formData
+      })
+
       const response = await fetch('/api/solicitudes', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(data)
+        body: JSON.stringify({
+          descripcion: formData.descripcion,
+          fecha: formData.fecha,
+          hora: formData.hora,
+          trabajadorId: selectedTrabajador._id,
+          usuarioId: user._id
+        }),
       })
 
+      const data = await response.json()
+
       if (!response.ok) {
-        throw new Error('Error al enviar la solicitud')
+        throw new Error(data.error || 'Error al enviar la solicitud')
       }
 
-      const result = await response.json()
-      console.log('Solicitud enviada:', result)
-      setSolicitudActiva(result.id)
       setIsDialogOpen(false)
+      setFormData({ descripcion: '', fecha: '', hora: '' })
+      alert('Solicitud enviada con éxito')
     } catch (error) {
-      console.error('Error:', error)
-      alert('Hubo un error al enviar la solicitud. Por favor, intenta de nuevo.')
+      console.error('Error al enviar solicitud:', error)
+      setFormError(error.message)
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
-  if (loading) return <div className="flex items-center justify-center min-h-screen">Cargando...</div>
+  if (isLoading) {
+    return <div className="flex items-center justify-center min-h-screen">Cargando...</div>
+  }
+
+  if (!isLoggedIn || !user) {
+    return <div className="flex items-center justify-center min-h-screen">
+      Debe iniciar sesión para acceder a esta página
+    </div>
+  }
+
+  if (loading) return <div className="flex items-center justify-center min-h-screen">Cargando trabajadores...</div>
   if (error) return <div className="flex items-center justify-center min-h-screen text-red-500">{error}</div>
 
   return (
@@ -197,38 +245,91 @@ export default function ServiciosPage() {
                     </p>
                   </div>
                 </div>
-                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button 
-                      className="w-full bg-[#324376] hover:bg-[#324376]/90"
-                      onClick={() => setSelectedTrabajador(trabajador)}
-                    >
-                      Contactar
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px]">
-                    <DialogHeader>
-                      <DialogTitle>Solicitar servicio</DialogTitle>
-                      <DialogDescription>
-                        Completa el formulario para solicitar el servicio de {selectedTrabajador?.displayName || `${selectedTrabajador?.firstName} ${selectedTrabajador?.lastName}`}
-                      </DialogDescription>
-                    </DialogHeader>
-                    {solicitudActiva ? (
-                      <Chat solicitudId={solicitudActiva} trabajadorId={selectedTrabajador?._id} />
-                    ) : (
-                      <SolicitudTrabajoForm 
-                        trabajador={selectedTrabajador}
-                        onSubmit={handleSolicitudSubmit}
-                        onCancel={() => setIsDialogOpen(false)}
-                      />
-                    )}
-                  </DialogContent>
-                </Dialog>
+                <Button 
+                  className="w-full bg-[#324376] hover:bg-[#324376]/90"
+                  onClick={() => {
+                    setSelectedTrabajador(trabajador)
+                    setIsDialogOpen(true)
+                  }}
+                >
+                  Contactar
+                </Button>
               </CardContent>
             </Card>
           ))
         )}
       </div>
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Solicitar servicio</DialogTitle>
+            <DialogDescription>
+              Completa el formulario para solicitar el servicio de{' '}
+              {selectedTrabajador?.displayName || 
+                (selectedTrabajador && `${selectedTrabajador.firstName} ${selectedTrabajador.lastName}`) || 
+                'trabajador seleccionado'}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label htmlFor="descripcion" className="block text-sm font-medium text-gray-700 mb-1">
+                Descripción del trabajo
+              </label>
+              <Textarea
+                id="descripcion"
+                value={formData.descripcion}
+                onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
+                required
+                placeholder="Describe el trabajo que necesitas..."
+                className="min-h-[100px]"
+              />
+            </div>
+            <div>
+              <label htmlFor="fecha" className="block text-sm font-medium text-gray-700 mb-1">
+                Fecha preferida
+              </label>
+              <Input
+                type="date"
+                id="fecha"
+                value={formData.fecha}
+                onChange={(e) => setFormData({ ...formData, fecha: e.target.value })}
+                required
+                min={new Date().toISOString().split('T')[0]}
+              />
+            </div>
+            <div>
+              <label htmlFor="hora" className="block text-sm font-medium text-gray-700 mb-1">
+                Hora preferida
+              </label>
+              <Input
+                type="time"
+                id="hora"
+                value={formData.hora}
+                onChange={(e) => setFormData({ ...formData, hora: e.target.value })}
+                required
+              />
+            </div>
+            {formError && (
+              <div className="text-red-500 text-sm bg-red-50 p-3 rounded-md">
+                {formError}
+              </div>
+            )}
+            <div className="flex justify-end space-x-2">
+              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={isSubmitting}
+                className="bg-[#324376] hover:bg-[#324376]/90"
+              >
+                {isSubmitting ? 'Enviando...' : 'Enviar solicitud'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

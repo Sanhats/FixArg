@@ -8,16 +8,16 @@ export async function POST(request) {
     const { email, password } = await request.json()
     const { db } = await connectToDatabase()
 
-    const user = await db.collection('usuarios').findOne({ email })
+    const trabajador = await db.collection('trabajadores').findOne({ email })
 
-    if (!user) {
+    if (!trabajador) {
       return NextResponse.json(
-        { error: 'Usuario no encontrado' },
+        { error: 'Trabajador no encontrado' },
         { status: 401 }
       )
     }
 
-    const isValidPassword = await bcrypt.compare(password, user.password)
+    const isValidPassword = await bcrypt.compare(password, trabajador.password)
 
     if (!isValidPassword) {
       return NextResponse.json(
@@ -26,24 +26,21 @@ export async function POST(request) {
       )
     }
 
-    // Create a user object without sensitive information
-    const userForToken = {
-      _id: user._id.toString(),
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      phone: user.phone,
-      street: user.street,
-      streetNumber: user.streetNumber,
-      province: user.province,
-      locality: user.locality
+    const trabajadorForToken = {
+      _id: trabajador._id.toString(),
+      firstName: trabajador.firstName,
+      lastName: trabajador.lastName,
+      email: trabajador.email,
+      occupation: trabajador.occupation,
+      hourlyRate: trabajador.hourlyRate,
+      role: 'trabajador'
     }
 
-    const token = sign(userForToken, process.env.JWT_SECRET, { expiresIn: '7d' })
+    const token = sign(trabajadorForToken, process.env.JWT_SECRET, { expiresIn: '7d' })
 
     return NextResponse.json({
       token,
-      user: userForToken
+      user: trabajadorForToken
     })
   } catch (error) {
     console.error('Login error:', error)
