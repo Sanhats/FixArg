@@ -1,4 +1,5 @@
 import { MongoClient } from 'mongodb'
+import bcrypt from 'bcrypt'
 
 if (!process.env.MONGODB_URI) {
   throw new Error('Please add your Mongo URI to .env.local')
@@ -40,7 +41,7 @@ export async function insertTasker(taskerData) {
   try {
     const { db } = await connectToDatabase()
     console.log('Attempting to insert tasker:', taskerData)
-    const result = await db.collection('taskers').insertOne(taskerData)
+    const result = await db.collection('trabajadores').insertOne(taskerData)
     console.log('Tasker inserted successfully:', result.insertedId)
     return result
   } catch (error) {
@@ -48,6 +49,7 @@ export async function insertTasker(taskerData) {
     throw error
   }
 }
+
 export async function insertUser(userData) {
   try {
     const { db } = await connectToDatabase()
@@ -88,6 +90,13 @@ export async function initializeCollections() {
       console.log('usuarios collection already exists')
     }
     
+    if (!collectionNames.includes('trabajadores')) {
+      await db.createCollection('trabajadores')
+      console.log('Created trabajadores collection')
+    } else {
+      console.log('trabajadores collection already exists')
+    }
+    
     console.log('All collections:', collectionNames)
   } catch (error) {
     console.error('Failed to initialize collections:', error)
@@ -95,5 +104,70 @@ export async function initializeCollections() {
   }
 }
 
+// New function to find a worker by email
+export async function findWorkerByEmail(email) {
+  try {
+    const { db } = await connectToDatabase()
+    const worker = await db.collection('trabajadores').findOne({ email })
+    console.log('Worker found:', worker)
+    return worker
+  } catch (error) {
+    console.error('Failed to find worker:', error)
+    throw error
+  }
+}
+
+// New function to create password for a worker
+export async function createWorkerPassword(email, password) {
+  try {
+    const { db } = await connectToDatabase()
+    const worker = await findWorkerByEmail(email)
+    
+    if (!worker) {
+      throw new Error('Worker not found')
+    }
+    
+    if (worker.password) {
+      throw new Error('Password already set for this worker')
+    }
+    
+    const hashedPassword = await bcrypt.hash(password, 10)
+    
+    const result = await db.collection('trabajadores').updateOne(
+      { _id: worker._id },
+      { 
+        $set: { 
+          password: hashedPassword,
+          passwordCreatedAt: new Date()
+        } 
+      }
+    )
+    
+    console.log('Password created for worker:', result.modifiedCount)
+    return result.modifiedCount > 0
+  } catch (error) {
+    console.error('Failed to create worker password:', error)
+    throw error
+  }
+}
+
+// New function to verify worker password
+export async function verifyWorkerPassword(email, password) {
+  try {
+    const worker = await findWorkerByEmail(email)
+    
+    if (!worker || !worker.password) {
+      return false
+    }
+    
+    const isMatch = await bcrypt.compare(password, worker.password)
+    return isMatch
+  } catch (error) {
+    console.error('Failed to verify worker password:', error)
+    throw error
+  }
+}
+
 // Call this function when your application starts
 initializeCollections().catch(console.error)
+
