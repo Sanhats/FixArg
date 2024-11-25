@@ -16,6 +16,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { ArrowLeft, Search, Clock, MapPin, Star, Filter, SlidersHorizontal } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 export default function ServiciosPage() {
   const [trabajadores, setTrabajadores] = useState([])
@@ -36,7 +38,7 @@ export default function ServiciosPage() {
   const [formError, setFormError] = useState(null)
   
   const router = useRouter()
-  const { isLoggedIn, getToken, user, isLoading } = useAuth()
+  const { isLoggedIn, getToken, user, isLoading, logout } = useAuth()
 
   useEffect(() => {
     if (!isLoading && !isLoggedIn) {
@@ -160,111 +162,183 @@ export default function ServiciosPage() {
   }
 
   if (isLoading) {
-    return <div className="flex items-center justify-center min-h-screen">Cargando...</div>
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[#E8E8E8]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#324376]"></div>
+      </div>
+    )
   }
 
   if (!isLoggedIn || !user) {
-    return <div className="flex items-center justify-center min-h-screen">
-      Debe iniciar sesión para acceder a esta página
-    </div>
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-[#E8E8E8] space-y-4">
+        <h2 className="text-2xl font-semibold text-[#091E05]">Acceso Restringido</h2>
+        <p className="text-[#71816D]">Debe iniciar sesión para acceder a esta página</p>
+        <Button 
+          onClick={() => router.push('/login')}
+          className="bg-[#324376] hover:bg-[#324376]/90 text-white"
+        >
+          Iniciar Sesión
+        </Button>
+      </div>
+    )
   }
 
-  if (loading) return <div className="flex items-center justify-center min-h-screen">Cargando trabajadores...</div>
-  if (error) return <div className="flex items-center justify-center min-h-screen text-red-500">{error}</div>
-
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-6">Servicios Disponibles</h1>
-      
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
-        <Select value={filtroServicio} onValueChange={setFiltroServicio}>
-          <SelectTrigger className="w-full md:w-[200px]">
-            <SelectValue placeholder="Todos los servicios" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos los servicios</SelectItem>
-            <SelectItem value="mudanza">Mudanza</SelectItem>
-            <SelectItem value="limpieza">Limpieza</SelectItem>
-            <SelectItem value="jardineria">Jardinería</SelectItem>
-            <SelectItem value="plomeria">Plomería</SelectItem>
-            <SelectItem value="electricidad">Electricidad</SelectItem>
-            <SelectItem value="carpinteria">Carpintería</SelectItem>
-            <SelectItem value="pintura">Pintura</SelectItem>
-          </SelectContent>
-        </Select>
+    <div className="min-h-screen bg-white">
+      <header className="sticky top-0 bg-[#71816D] z-50">
+        <div className="container mx-auto px-4">
+          <nav className="flex items-center justify-between h-16">
+            <Button
+              variant="ghost"
+              className="text-white  flex items-center gap-2"
+              onClick={() => router.push('/')}
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Volver
+            </Button>
+            <div className="flex items-center gap-4">
+              <span className="text-white">
+                Bienvenido, {user?.firstName}
+              </span>
+              <Button 
+                onClick={logout} 
+                variant="outline" 
+                className="bg-white text-[#71816D] hover:bg-white/90 border-white"
+              >
+                Cerrar sesión
+              </Button>
+            </div>
+          </nav>
+        </div>
+      </header>
 
-        <Select value={ordenPrecio} onValueChange={setOrdenPrecio}>
-          <SelectTrigger className="w-full md:w-[200px]">
-            <SelectValue placeholder="Ordenar por precio" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ninguno">Sin ordenar</SelectItem>
-            <SelectItem value="ascendente">Precio: Menor a Mayor</SelectItem>
-            <SelectItem value="descendente">Precio: Mayor a Menor</SelectItem>
-          </SelectContent>
-        </Select>
+      <main className="container mx-auto px-4 py-8">
+        <div className="max-w-7xl mx-auto">
+          <header className="mb-8">
+            <h1 className="text-3xl font-bold text-[#091E05] mb-2">Servicios Disponibles</h1>
+            <p className="text-[#71816D]">Encuentra profesionales calificados para tus necesidades</p>
+          </header>
 
-        <Input
-          type="text"
-          placeholder="Buscar trabajadores..."
-          value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
-          className="w-full md:w-auto"
-        />
-      </div>
+          <div className="bg-[#F5F5F5] rounded-lg p-4 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#71816D] h-4 w-4" />
+                <Input
+                  type="text"
+                  placeholder="Buscar servicios..."
+                  value={busqueda}
+                  onChange={(e) => setBusqueda(e.target.value)}
+                  className="pl-10 bg-white border-[#71816D] focus:border-[#71816D] focus:ring-[#71816D]"
+                />
+              </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredTrabajadores.length === 0 ? (
-          <div className="col-span-full text-center py-8 text-gray-500">
-            No se encontraron trabajadores que coincidan con los criterios de búsqueda
+              <Select value={filtroServicio} onValueChange={setFiltroServicio}>
+                <SelectTrigger className="bg-white border-[#71816D]">
+                  <Filter className="h-4 w-4 mr-2 text-[#71816D]" />
+                  <SelectValue placeholder="Categoría" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos los servicios</SelectItem>
+                  <SelectItem value="mudanza">Mudanza</SelectItem>
+                  <SelectItem value="limpieza">Limpieza</SelectItem>
+                  <SelectItem value="jardineria">Jardinería</SelectItem>
+                  <SelectItem value="plomeria">Plomería</SelectItem>
+                  <SelectItem value="electricidad">Electricidad</SelectItem>
+                  <SelectItem value="carpinteria">Carpintería</SelectItem>
+                  <SelectItem value="pintura">Pintura</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={ordenPrecio} onValueChange={setOrdenPrecio}>
+                <SelectTrigger className="bg-white border-[#71816D]">
+                  <SlidersHorizontal className="h-4 w-4 mr-2 text-[#71816D]" />
+                  <SelectValue placeholder="Ordenar por" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ninguno">Sin ordenar</SelectItem>
+                  <SelectItem value="ascendente">Precio: Menor a Mayor</SelectItem>
+                  <SelectItem value="descendente">Precio: Mayor a Menor</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-        ) : (
-          filteredTrabajadores.map((trabajador) => (
-            <Card key={trabajador._id} className="flex flex-col">
-              <CardHeader>
-                <CardTitle className="text-xl">
-                  {trabajador.displayName || `${trabajador.firstName} ${trabajador.lastName}`}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex-1 space-y-4">
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold">Servicio:</span>
-                    <Badge variant="secondary">
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredTrabajadores.length === 0 ? (
+              <div className="col-span-full text-center py-12">
+                <div className="mx-auto max-w-sm">
+                  <p className="text-[#71816D] mb-4">No se encontraron trabajadores que coincidan con los criterios de búsqueda</p>
+                  <Button 
+                    onClick={() => {
+                      setFiltroServicio('todos')
+                      setOrdenPrecio('ninguno')
+                      setBusqueda('')
+                    }}
+                    variant="outline"
+                    className="border-[#71816D] text-[#71816D] hover:bg-[#71816D] hover:text-white"
+                  >
+                    Limpiar filtros
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              filteredTrabajadores.map((trabajador) => (
+                <Card 
+                  key={trabajador._id} 
+                  className="bg-white border border-[#F5F5F5] hover:border-[#71816D] transition-colors duration-200"
+                >
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-xl text-[#091E05]">
+                      {trabajador.displayName || `${trabajador.firstName} ${trabajador.lastName}`}
+                    </CardTitle>
+                    <Badge 
+                      variant="secondary" 
+                      className="bg-[#F5F5F5] text-[#71816D] font-medium"
+                    >
                       {trabajador.service || trabajador.occupation || 'No especificado'}
                     </Badge>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold">Precio por hora:</span>
-                    <span>${trabajador.hourlyRate || 'No especificado'}</span>
-                  </div>
-                  <div>
-                    <span className="font-semibold">Descripción:</span>
-                    <p className="mt-1 text-sm text-gray-600">
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-3">
+                      <div className="flex items-center text-[#71816D]">
+                        <Clock className="h-4 w-4 mr-2" />
+                        <span className="font-medium">${trabajador.hourlyRate || 'No especificado'}/hora</span>
+                      </div>
+                      <div className="flex items-center text-[#71816D]">
+                        <Star className="h-4 w-4 mr-2" />
+                        <span>4.8 (24 reseñas)</span>
+                      </div>
+                      <div className="flex items-center text-[#71816D]">
+                        <MapPin className="h-4 w-4 mr-2" />
+                        <span>Tucuman</span>
+                      </div>
+                    </div>
+                    <p className="text-sm text-[#71816D] line-clamp-2">
                       {trabajador.description || 'Sin descripción'}
                     </p>
-                  </div>
-                </div>
-                <Button 
-                  className="w-full bg-[#324376] hover:bg-[#324376]/90"
-                  onClick={() => {
-                    setSelectedTrabajador(trabajador)
-                    setIsDialogOpen(true)
-                  }}
-                >
-                  Contactar
-                </Button>
-              </CardContent>
-            </Card>
-          ))
-        )}
-      </div>
+                    <Button 
+                      className="w-full bg-[#71816D] hover:bg-[#71816D]/90 text-white"
+                      onClick={() => {
+                        setSelectedTrabajador(trabajador)
+                        setIsDialogOpen(true)
+                      }}
+                    >
+                      Contactar
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+        </div>
+      </main>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[425px] bg-white">
           <DialogHeader>
-            <DialogTitle>Solicitar servicio</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-[#091E05]">Solicitar servicio</DialogTitle>
+            <DialogDescription className="text-[#71816D]">
               Completa el formulario para solicitar el servicio de{' '}
               {selectedTrabajador?.displayName || 
                 (selectedTrabajador && `${selectedTrabajador.firstName} ${selectedTrabajador.lastName}`) || 
@@ -273,7 +347,7 @@ export default function ServiciosPage() {
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="descripcion" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="descripcion" className="block text-sm font-medium text-[#091E05] mb-1">
                 Descripción del trabajo
               </label>
               <Textarea
@@ -282,11 +356,11 @@ export default function ServiciosPage() {
                 onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
                 required
                 placeholder="Describe el trabajo que necesitas..."
-                className="min-h-[100px]"
+                className="min-h-[100px] border-[#71816D] focus:border-[#71816D] focus:ring-[#71816D]"
               />
             </div>
             <div>
-              <label htmlFor="fecha" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="fecha" className="block text-sm font-medium text-[#091E05] mb-1">
                 Fecha preferida
               </label>
               <Input
@@ -296,10 +370,11 @@ export default function ServiciosPage() {
                 onChange={(e) => setFormData({ ...formData, fecha: e.target.value })}
                 required
                 min={new Date().toISOString().split('T')[0]}
+                className="border-[#71816D] focus:border-[#71816D] focus:ring-[#71816D]"
               />
             </div>
             <div>
-              <label htmlFor="hora" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="hora" className="block text-sm font-medium text-[#091E05] mb-1">
                 Hora preferida
               </label>
               <Input
@@ -308,6 +383,7 @@ export default function ServiciosPage() {
                 value={formData.hora}
                 onChange={(e) => setFormData({ ...formData, hora: e.target.value })}
                 required
+                className="border-[#71816D] focus:border-[#71816D] focus:ring-[#71816D]"
               />
             </div>
             {formError && (
@@ -316,13 +392,21 @@ export default function ServiciosPage() {
               </div>
             )}
             <div className="flex justify-end space-x-2">
-              <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setIsDialogOpen(false)}
+                className="border-[#71816D] text-[#71816D] hover:bg-[#71816D] hover:text-white"
+              >
                 Cancelar
               </Button>
               <Button 
                 type="submit" 
                 disabled={isSubmitting}
-                className="bg-[#324376] hover:bg-[#324376]/90"
+                className={cn(
+                  "bg-[#71816D] hover:bg-[#71816D]/90 text-white",
+                  isSubmitting && "opacity-50 cursor-not-allowed"
+                )}
               >
                 {isSubmitting ? 'Enviando...' : 'Enviar solicitud'}
               </Button>
@@ -333,3 +417,4 @@ export default function ServiciosPage() {
     </div>
   )
 }
+

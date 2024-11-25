@@ -48,7 +48,7 @@ export default function LoginForm() {
 
       login(data.token, data.user)
       setIsOpen(false)
-      router.push('/servicios')
+      router.push('/')
     } catch (error) {
       console.error('Login error:', error)
       setSubmitError(error.message || 'Error al iniciar sesión. Por favor, intenta nuevamente.')
