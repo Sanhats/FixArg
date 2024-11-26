@@ -1,4 +1,5 @@
 import { MongoClient } from 'mongodb'
+import bcrypt from 'bcryptjs'
 
 if (!process.env.MONGODB_URI) {
   throw new Error('Please add your Mongo URI to .env.local')
@@ -46,6 +47,9 @@ export async function POST(request) {
       body.hourlyRate = hourlyRate // Ensure it's stored as a number
     }
     
+    // Hash the password
+    const hashedPassword = await bcrypt.hash(body.password, 10)
+    
     // Connect to MongoDB
     const client = await clientPromise
     const db = client.db("FixArg")
@@ -59,6 +63,7 @@ export async function POST(request) {
     // Insert the new tasker document
     const result = await db.collection('trabajadores').insertOne({
       ...body,
+      password: hashedPassword,
       status: 'pending',
       createdAt: new Date(),
     })

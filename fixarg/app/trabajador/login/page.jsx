@@ -27,7 +27,7 @@ export default function TrabajadorLoginPage() {
       const data = await response.json()
 
       if (response.ok) {
-        login(data.token, data.user)
+        login(data.token, { ...data.user, role: 'trabajador' })
         router.push('/trabajador/dashboard')
       } else {
         setError(data.error || 'Error al iniciar sesión')

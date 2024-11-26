@@ -1,6 +1,6 @@
-"use client"
+'use client'
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -12,7 +12,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogClose,
 } from "@/components/ui/dialog"
 import {
   Card,
@@ -30,12 +29,14 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
-import { Check, Upload, ChevronRight, Home } from "lucide-react"
+import { Check, Upload, ChevronRight, Home } from 'lucide-react'
+
 const provinces = [
   "Tucumán"
+  // Add other provinces here
 ]
+
 export default function BecomeTaskerForm() {
-  
   const [step, setStep] = useState(1)
   const [progress, setProgress] = useState(25)
   const [formData, setFormData] = useState({
@@ -50,6 +51,7 @@ export default function BecomeTaskerForm() {
     phone: "",
     hourlyRate: "",
     province: "",
+    password: "", // New password field
   })
   const [previewUrl, setPreviewUrl] = useState(null)
   const fileInputRef = useRef(null)
@@ -90,7 +92,8 @@ export default function BecomeTaskerForm() {
         email: formData.email,
         phone: formData.phone,
         hourlyRate: parseFloat(formData.hourlyRate),
-        province:formData.province,
+        province: formData.province,
+        password: formData.password, // Include password in the data to send
       }
 
       const response = await fetch('/api/taskers', {
@@ -107,7 +110,7 @@ export default function BecomeTaskerForm() {
         throw new Error(data.message || 'Error al enviar los datos')
       }
 
-      setProgress(100) // Completar la barra de progreso
+      setProgress(100)
       setSubmitSuccess(true)
       console.log('Datos enviados correctamente', data)
     } catch (error) {
@@ -362,24 +365,24 @@ export default function BecomeTaskerForm() {
                   required
                   className="min-h-[100px]"
                 />
-                <div className="space-y-2">
-            <Label htmlFor="province" className="text-sm sm:text-base">Provincia</Label>
-            <Select
-              value={formData.province}
-              onValueChange={(value) => setFormData({...formData, province: value})}
-            >
-              <SelectTrigger className="text-sm sm:text-base">
-                <SelectValue placeholder="Selecciona una provincia" />
-              </SelectTrigger>
-              <SelectContent>
-                {provinces.map((province) => (
-                  <SelectItem key={province} value={province} className="text-sm sm:text-base">
-                    {province}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="province" className="text-sm sm:text-base">Provincia</Label>
+                <Select
+                  value={formData.province}
+                  onValueChange={(value) => setFormData({...formData, province: value})}
+                >
+                  <SelectTrigger className="text-sm sm:text-base">
+                    <SelectValue placeholder="Selecciona una provincia" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {provinces.map((province) => (
+                <SelectItem key={province} value={province} className="text-sm sm:text-base">
+                        {province}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="hourlyRate">Precio por hora (ARS)</Label>
@@ -404,7 +407,6 @@ export default function BecomeTaskerForm() {
                 <Label htmlFor="email">Correo electronico</Label>
                 <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
                   <Input
-                    
                     id="email"
                     type="email"
                     value={formData.email}
@@ -445,8 +447,7 @@ export default function BecomeTaskerForm() {
                       disabled={isVerifying}
                       className="w-full sm:w-auto"
                     >
-                      {isVerifying ? 
-                      "Verificando..." : "Confirmar"}
+                      {isVerifying ? "Verificando..." : "Confirmar"}
                     </Button>
                   </div>
                 </div>
@@ -456,6 +457,18 @@ export default function BecomeTaskerForm() {
                   <Check className="mr-2 h-4 w-4 sm:h-5 sm:w-5" /> Correo electrónico verificado
                 </div>
               )}
+              <div className="space-y-2">
+                <Label htmlFor="password">Contraseña</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) =>
+                    setFormData({ ...formData, password: e.target.value })
+                  }
+                  required
+                />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">Numero de telefono</Label>
                 <Input

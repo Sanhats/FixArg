@@ -1,52 +1,76 @@
-import { NextResponse } from 'next/server'
-import { connectToDatabase } from '@/lib/mongodb'
+import { MongoClient } from 'mongodb'
 import bcrypt from 'bcryptjs'
-import { sign } from 'jsonwebtoken'
+import jwt from 'jsonwebtoken'
+
+if (!process.env.MONGODB_URI) {
+  throw new Error('Please add your Mongo URI to .env.local')
+}
+
+const uri = process.env.MONGODB_URI
+const options = {}
+
+let client
+let clientPromise
+
+if (process.env.NODE_ENV === 'development') {
+  if (!global._mongoClientPromise) {
+    client = new MongoClient(uri, options)
+    global._mongoClientPromise = client.connect()
+  }
+  clientPromise = global._mongoClientPromise
+} else {
+  client = new MongoClient(uri, options)
+  clientPromise = client.connect()
+}
 
 export async function POST(request) {
   try {
     const { email, password } = await request.json()
-    const { db } = await connectToDatabase()
+
+    const client = await clientPromise
+    const db = client.db("FixArg")
 
     const trabajador = await db.collection('trabajadores').findOne({ email })
 
     if (!trabajador) {
-      return NextResponse.json(
-        { error: 'Trabajador no encontrado' },
-        { status: 401 }
+      return new Response(
+        JSON.stringify({ error: 'Trabajador no encontrado' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
       )
     }
 
-    const isValidPassword = await bcrypt.compare(password, trabajador.password)
+    const isPasswordValid = await bcrypt.compare(password, trabajador.password)
 
-    if (!isValidPassword) {
-      return NextResponse.json(
-        { error: 'Contraseña incorrecta' },
-        { status: 401 }
+    if (!isPasswordValid) {
+      return new Response(
+        JSON.stringify({ error: 'Contraseña incorrecta' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
       )
     }
 
-    const trabajadorForToken = {
-      _id: trabajador._id.toString(),
+    const token = jwt.sign(
+      { userId: trabajador._id, email: trabajador.email, role: 'trabajador' },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    )
+
+    const userToSend = {
+      _id: trabajador._id,
+      email: trabajador.email,
       firstName: trabajador.firstName,
       lastName: trabajador.lastName,
-      email: trabajador.email,
-      occupation: trabajador.occupation,
-      hourlyRate: trabajador.hourlyRate,
       role: 'trabajador'
     }
 
-    const token = sign(trabajadorForToken, process.env.JWT_SECRET, { expiresIn: '7d' })
-
-    return NextResponse.json({
-      token,
-      user: trabajadorForToken
-    })
+    return new Response(
+      JSON.stringify({ token, user: userToSend }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    )
   } catch (error) {
-    console.error('Login error:', error)
-    return NextResponse.json(
-      { error: 'Error en el servidor' },
-      { status: 500 }
+    console.error('Login Error:', error)
+    return new Response(
+      JSON.stringify({ error: 'Error del servidor' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } }
     )
   }
 }
