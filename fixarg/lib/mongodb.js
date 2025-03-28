@@ -6,28 +6,28 @@ if (!process.env.MONGODB_URI) {
 
 const uri = process.env.MONGODB_URI
 const options = {
-  maxPoolSize: 3,
-  minPoolSize: 1,
+  maxPoolSize: 5,
+  minPoolSize: 2,
   retryWrites: true,
   w: 'majority',
-  wtimeoutMS: 15000,
-  connectTimeoutMS: 15000,
-  socketTimeoutMS: 20000,
-  serverSelectionTimeoutMS: 15000,
+  wtimeoutMS: 30000,
+  connectTimeoutMS: 30000,
+  socketTimeoutMS: 45000,
+  serverSelectionTimeoutMS: 30000,
   keepAlive: true,
   useNewUrlParser: true,
   useUnifiedTopology: true,
-  heartbeatFrequencyMS: 10000,
-  autoReconnect: true,
-  reconnectTries: 3,
-  reconnectInterval: 1000,
-  poolSize: 3
+  heartbeatFrequencyMS: 20000,
+  maxConnecting: 2,
+  maxIdleTimeMS: 60000,
+  waitQueueTimeoutMS: 15000,
+  compressors: ['zlib']
 }
 
-const MAX_RETRIES = 3
-const RETRY_DELAY_MS = 1000
-const MAX_RECONNECT_ATTEMPTS = 2
-const MAX_BACKOFF_MS = 5000
+const MAX_RETRIES = 5
+const RETRY_DELAY_MS = 2000
+const MAX_RECONNECT_ATTEMPTS = 3
+const MAX_BACKOFF_MS = 10000
 let client
 let clientPromise
 let isConnecting = false
@@ -157,6 +157,11 @@ export async function connectToDatabase() {
       if (!client.topology || !client.topology.isConnected()) {
         console.log(`Reconnecting to MongoDB (attempt ${attempt}/${MAX_RETRIES})...`);
         await client.connect();
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        const ping = await client.db().admin().ping();
+        if (ping.ok !== 1) {
+          throw new Error('Database ping failed after reconnection');
+        }
       }
       const db = client.db('FixArg');
       
