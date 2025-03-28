@@ -24,17 +24,13 @@ const options = {
   poolSize: 5
 }
 
-const MAX_RETRIES = 3
-const RETRY_DELAY_MS = 1000
-const MAX_RECONNECT_ATTEMPTS = 5
+const MAX_RETRIES = 5
+const RETRY_DELAY_MS = 2000
+const MAX_RECONNECT_ATTEMPTS = 3
 const MAX_BACKOFF_MS = 10000
 let client
 let clientPromise
 let isConnecting = false
-
-const MAX_RETRIES = 5
-const RETRY_DELAY_MS = 2000
-const MAX_RECONNECT_ATTEMPTS = 3
 
 async function connectWithRetry(attempt = 1, reconnectAttempt = 1) {
   if (isConnecting) {
