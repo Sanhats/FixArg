@@ -1,4 +1,4 @@
-# Configuración para Despliegue en Vercel
+
 
 ## Variables de Entorno
 
