@@ -25,8 +25,7 @@ export async function POST(request) {
     }
 
     console.log('Environment check passed, processing request');
-  
-  try {
+    
     let body;
     try {
       body = await request.json();
@@ -75,10 +74,9 @@ export async function POST(request) {
       passwordLength: password ? password.length : 0
     });
 
-    if (!process.env.ADMIN_USERNAME || !"$2a$10$MI57y.ssXPB7eBGqEB2qVerUEsZqLKOQQY7j3M0okUxUdO/PkZAWG" || !process.env.JWT_SECRET) {
+    if (!process.env.ADMIN_USERNAME || !process.env.JWT_SECRET) {
       console.error('Missing environment variables:', {
         hasUsername: !!process.env.ADMIN_USERNAME,
-        hasPasswordHash: !!"$2a$10$MI57y.ssXPB7eBGqEB2qVerUEsZqLKOQQY7j3M0okUxUdO/PkZAWG",
         hasJwtSecret: !!process.env.JWT_SECRET,
       });
       return NextResponse.json(
@@ -97,14 +95,9 @@ export async function POST(request) {
 
     console.log('Username validation successful, checking password');
 
-    // Verificar contraseña
-    console.log('Password from request:', password);
-    console.log('Admin password hash:', "$2a$10$MI57y.ssXPB7eBGqEB2qVerUEsZqLKOQQY7j3M0okUxUdO/PkZAWG");
-
     const isPasswordValid = await bcrypt.compare(
       password,
-    "$2a$10$MI57y.ssXPB7eBGqEB2qVerUEsZqLKOQQY7j3M0okUxUdO/PkZAWG"
-
+      "$2a$10$MI57y.ssXPB7eBGqEB2qVerUEsZqLKOQQY7j3M0okUxUdO/PkZAWG"
     );
 
     console.log('Password validation result:', isPasswordValid);
@@ -119,14 +112,6 @@ export async function POST(request) {
 
     console.log('Password validation successful, generating token');
     
-    if (!process.env.JWT_SECRET) {
-      console.error('JWT_SECRET no está definido en las variables de entorno');
-      return NextResponse.json(
-        { error: 'Error de configuración del servidor' },
-        { status: 500 }
-      );
-    }
-
     const token = jwt.sign(
       { username, role: 'admin' },
       process.env.JWT_SECRET,
@@ -198,8 +183,6 @@ export async function OPTIONS() {
         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
         'Access-Control-Max-Age': '86400'
       }
-    }
-  );
     }
   );
 }
