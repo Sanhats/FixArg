@@ -32,6 +32,60 @@ export default function TrabajadorDashboard() {
   const [averageRating, setAverageRating] = useState(0)
   const { user, getToken, isLoggedIn, isLoading } = useAuth()
   const router = useRouter()
+  
+  const handleAcceptRequest = async (solicitudId) => {
+    try {
+      const token = getToken()
+      const response = await fetch(`/api/trabajador/solicitudes/${solicitudId}/aceptar`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error('Error al aceptar la solicitud')
+      }
+
+      // Actualizar el estado local
+      setSolicitudes(prevSolicitudes => 
+        prevSolicitudes.map(sol => 
+          sol._id === solicitudId ? { ...sol, estado: 'aceptada' } : sol
+        )
+      )
+    } catch (error) {
+      console.error('Error:', error)
+      setError(error.message)
+    }
+  }
+
+  const handleRejectRequest = async (solicitudId) => {
+    try {
+      const token = getToken()
+      const response = await fetch(`/api/trabajador/solicitudes/${solicitudId}/rechazar`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error('Error al rechazar la solicitud')
+      }
+
+      // Actualizar el estado local
+      setSolicitudes(prevSolicitudes => 
+        prevSolicitudes.map(sol => 
+          sol._id === solicitudId ? { ...sol, estado: 'rechazada' } : sol
+        )
+      )
+    } catch (error) {
+      console.error('Error:', error)
+      setError(error.message)
+    }
+  }
 
   useEffect(() => {
     if (!isLoading && !isLoggedIn) {
@@ -112,7 +166,7 @@ export default function TrabajadorDashboard() {
             <CardDescription>{error}</CardDescription>
           </CardHeader>
           <CardFooter>
-            <Button onClick={() => window.location.reload()}>
+            <Button onClick={() => router.refresh()}>
               Intentar nuevamente
             </Button>
           </CardFooter>

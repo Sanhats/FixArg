@@ -225,7 +225,7 @@ export default function BecomeTaskerForm() {
             <CardFooter className="flex flex-col sm:flex-row justify-center gap-4">
               <Button 
                 className="w-full sm:w-auto bg-[#14A800] text-white hover:bg-[#14A800]/90"
-                onClick={() => window.location.href = '/'}
+                onClick={() => router.push('/')}
               >
                 <Home className="mr-2 h-4 w-4" />
                 Ir al inicio
