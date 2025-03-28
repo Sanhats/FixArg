@@ -6,20 +6,28 @@ if (!process.env.MONGODB_URI) {
 
 const uri = process.env.MONGODB_URI
 const options = {
-  maxPoolSize: 10,
-  minPoolSize: 5,
+  maxPoolSize: 5,
+  minPoolSize: 1,
   retryWrites: true,
   w: 'majority',
-  wtimeoutMS: 60000,
-  connectTimeoutMS: 60000,
-  socketTimeoutMS: 75000,
-  serverSelectionTimeoutMS: 60000,
+  wtimeoutMS: 30000,
+  connectTimeoutMS: 30000,
+  socketTimeoutMS: 45000,
+  serverSelectionTimeoutMS: 30000,
   keepAlive: true,
   useNewUrlParser: true,
   useUnifiedTopology: true,
-  heartbeatFrequencyMS: 10000
+  heartbeatFrequencyMS: 20000,
+  autoReconnect: true,
+  reconnectTries: Number.MAX_VALUE,
+  reconnectInterval: 1000,
+  poolSize: 5
 }
 
+const MAX_RETRIES = 3
+const RETRY_DELAY_MS = 1000
+const MAX_RECONNECT_ATTEMPTS = 5
+const MAX_BACKOFF_MS = 10000
 let client
 let clientPromise
 let isConnecting = false
@@ -39,60 +47,76 @@ async function connectWithRetry(attempt = 1, reconnectAttempt = 1) {
   try {
     console.log(`Intento de conexión ${attempt}/${MAX_RETRIES} a MongoDB...`)
     const newClient = new MongoClient(uri, options)
+    
+    // Implementar ping de prueba antes de considerar la conexión exitosa
     await newClient.connect()
+    await newClient.db().admin().ping()
     console.log('Conexión exitosa a MongoDB')
     
     newClient.on('close', () => {
       console.warn(`Conexión a MongoDB cerrada. Intento de reconexión ${reconnectAttempt}/${MAX_RECONNECT_ATTEMPTS}`)
       if (reconnectAttempt <= MAX_RECONNECT_ATTEMPTS) {
+        const backoffDelay = Math.min(RETRY_DELAY_MS * Math.pow(2, reconnectAttempt - 1), MAX_BACKOFF_MS)
         setTimeout(() => {
           connectWithRetry(1, reconnectAttempt + 1)
-        }, RETRY_DELAY_MS)
+        }, backoffDelay)
       } else {
         console.error('Se alcanzó el límite máximo de intentos de reconexión')
-        process.exit(1)
+        throw new Error('Error de conexión a la base de datos después de múltiples intentos')
       }
     })
     
     newClient.on('error', (error) => {
-      console.error('Error en la conexión de MongoDB:', {
+      const errorDetails = {
         message: error.message,
         code: error.code,
-        name: error.name
-      })
+        name: error.name,
+        timestamp: new Date().toISOString()
+      }
+      console.error('Error en la conexión de MongoDB:', errorDetails)
       
       if (!newClient.topology?.isConnected()) {
         if (reconnectAttempt <= MAX_RECONNECT_ATTEMPTS) {
-          console.warn('Conexión perdida. Intentando reconectar...')
+          const backoffDelay = Math.min(RETRY_DELAY_MS * Math.pow(2, reconnectAttempt - 1), MAX_BACKOFF_MS)
+          console.warn(`Conexión perdida. Intentando reconectar en ${backoffDelay}ms...`)
           setTimeout(() => {
             connectWithRetry(1, reconnectAttempt + 1)
-          }, RETRY_DELAY_MS)
+          }, backoffDelay)
         } else {
-          console.error('Se alcanzó el límite máximo de intentos de reconexión')
-          process.exit(1)
+          const finalError = new Error('Error de conexión a la base de datos después de múltiples intentos')
+          finalError.details = errorDetails
+          throw finalError
         }
       }
     })
     
     isConnecting = false
     return newClient
-    } catch (error) {
-      console.error(`Connection attempt ${attempt} failed:`, error)
-      if (attempt === MAX_RETRIES) {
-        console.error('Max retries reached. Throwing error with details:', {
-          uri: uri.replace(/\/\/[^:]+:[^@]+@/, '//***:***@'),
-          error: error.message,
-          stack: error.stack
-        })
-        isConnecting = false
-        throw error
+  } catch (error) {
+    console.error(`Intento de conexión ${attempt} fallido:`, {
+      message: error.message,
+      name: error.name,
+      code: error.code,
+      timestamp: new Date().toISOString()
+    })
+    
+    if (attempt === MAX_RETRIES) {
+      const finalError = new Error('Error de conexión a la base de datos')
+      finalError.details = {
+        uri: uri.replace(/\/\/[^:]+:[^@]+@/, '\/\/***:***@'),
+        error: error.message,
+        attempts: attempt,
+        timestamp: new Date().toISOString()
       }
-      const delay = RETRY_DELAY_MS * Math.pow(2, attempt - 1)
-      console.log(`Waiting ${delay}ms before retry...`)
-      await new Promise(resolve => setTimeout(resolve, delay))
       isConnecting = false
-      return connectWithRetry(attempt + 1, reconnectAttempt)
+      throw finalError
     }
+    
+    const backoffDelay = Math.min(RETRY_DELAY_MS * Math.pow(2, attempt - 1), MAX_BACKOFF_MS)
+    console.log(`Esperando ${backoffDelay}ms antes de reintentar...`)
+    await new Promise(resolve => setTimeout(resolve, backoffDelay))
+    isConnecting = false
+    return connectWithRetry(attempt + 1, reconnectAttempt)
   }
 }
 
