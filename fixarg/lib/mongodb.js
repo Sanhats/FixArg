@@ -6,28 +6,28 @@ if (!process.env.MONGODB_URI) {
 
 const uri = process.env.MONGODB_URI
 const options = {
-  maxPoolSize: 5,
-  minPoolSize: 2,
+  maxPoolSize: 3,
+  minPoolSize: 1,
   retryWrites: true,
   w: 'majority',
-  wtimeoutMS: 30000,
-  connectTimeoutMS: 30000,
-  socketTimeoutMS: 45000,
-  serverSelectionTimeoutMS: 30000,
+  wtimeoutMS: 10000,
+  connectTimeoutMS: 10000,
+  socketTimeoutMS: 15000,
+  serverSelectionTimeoutMS: 10000,
   keepAlive: true,
   useNewUrlParser: true,
   useUnifiedTopology: true,
-  heartbeatFrequencyMS: 20000,
-  maxConnecting: 2,
-  maxIdleTimeMS: 60000,
-  waitQueueTimeoutMS: 15000,
+  heartbeatFrequencyMS: 10000,
+  maxConnecting: 1,
+  maxIdleTimeMS: 30000,
+  waitQueueTimeoutMS: 10000,
   compressors: ['zlib']
 }
 
-const MAX_RETRIES = 5
-const RETRY_DELAY_MS = 2000
-const MAX_RECONNECT_ATTEMPTS = 3
-const MAX_BACKOFF_MS = 10000
+const MAX_RETRIES = 3
+const RETRY_DELAY_MS = 1000
+const MAX_RECONNECT_ATTEMPTS = 2
+const MAX_BACKOFF_MS = 5000
 let client
 let clientPromise
 let isConnecting = false
@@ -148,10 +148,10 @@ if (process.env.NODE_ENV === 'development') {
 export default clientPromise
 
 export async function connectToDatabase() {
-  const MAX_RETRIES = 3;
-  const BASE_DELAY = 1000; // 1 second
+  const LOCAL_MAX_RETRIES = 2;
+  const BASE_DELAY = 500; // 0.5 second
 
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+  for (let attempt = 1; attempt <= LOCAL_MAX_RETRIES; attempt++) {
     try {
       const client = await clientPromise;
       if (!client.topology || !client.topology.isConnected()) {
