@@ -15,10 +15,8 @@
     { "src": "/(.*\\.(js|json|css|ico|png|jpg|jpeg|svg|webp))", "dest": "/$1" },
     { "src": "/(.*)", "dest": "/" }
   ],
-  "build": {
-    "env": {
-      "NEXT_PUBLIC_VERCEL_URL": "${VERCEL_URL}"
-    }
+  "env": {
+    "NEXT_PUBLIC_VERCEL_URL": "${VERCEL_URL}"
   },
   "headers": [
     {

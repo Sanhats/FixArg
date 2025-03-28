@@ -17,6 +17,12 @@ const nextConfig = {
   // Configuración para manejo de assets estáticos
   images: {
     domains: ['vercel.com'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+    ],
     // Mantener optimización de imágenes en Vercel
     unoptimized: false,
   },
