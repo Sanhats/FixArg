@@ -6,20 +6,40 @@ if (!process.env.MONGODB_URI) {
 }
 
 const uri = process.env.MONGODB_URI
-const options = {}
+const options = {
+  serverSelectionTimeoutMS: 5000,
+  socketTimeoutMS: 30000,
+  connectTimeoutMS: 10000,
+  retryWrites: true,
+  retryReads: true
+}
 
 let client
 let clientPromise
 
+async function connectWithRetry(retries = 3, delay = 1000) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      if (!client) {
+        client = new MongoClient(uri, options)
+      }
+      return await client.connect()
+    } catch (error) {
+      console.error(`Intento ${i + 1} de ${retries} falló:`, error)
+      if (i === retries - 1) throw error
+      await new Promise(resolve => setTimeout(resolve, delay))
+      delay *= 2 // Backoff exponencial
+    }
+  }
+}
+
 if (process.env.NODE_ENV === 'development') {
   if (!global._mongoClientPromise) {
-    client = new MongoClient(uri, options)
-    global._mongoClientPromise = client.connect()
+    global._mongoClientPromise = connectWithRetry()
   }
   clientPromise = global._mongoClientPromise
 } else {
-  client = new MongoClient(uri, options)
-  clientPromise = client.connect()
+  clientPromise = connectWithRetry()
 }
 
 export async function POST(request) {
@@ -83,14 +103,28 @@ export async function POST(request) {
     )
   } catch (error) {
     console.error('Database Error:', error)
+    let statusCode = 500
+    let errorMessage = 'Error interno del servidor'
+
+    if (error.code === 'ECONNRESET') {
+      errorMessage = 'La conexión con la base de datos se interrumpió. Por favor, intente nuevamente.'
+      // Intentar reconectar para futuros requests
+      clientPromise = connectWithRetry()
+    } else if (error.name === 'MongoServerSelectionError') {
+      errorMessage = 'No se pudo conectar con la base de datos. Por favor, intente más tarde.'
+    } else if (error.code === 11000) {
+      statusCode = 409
+      errorMessage = 'Ya existe un registro con estos datos.'
+    }
+
     return new Response(
       JSON.stringify({
         success: false,
-        message: 'Failed to submit application',
-        error: error.message
+        message: 'No se pudo procesar la solicitud',
+        error: errorMessage
       }),
       {
-        status: 500,
+        status: statusCode,
         headers: {
           'Content-Type': 'application/json',
         },

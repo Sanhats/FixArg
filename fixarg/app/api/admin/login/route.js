@@ -69,6 +69,14 @@ export async function POST(request) {
     }
 
     console.log('Password validation successful, generating token');
+    
+    if (!process.env.JWT_SECRET) {
+      console.error('JWT_SECRET no está definido en las variables de entorno');
+      return NextResponse.json(
+        { error: 'Error de configuración del servidor' },
+        { status: 500 }
+      );
+    }
 
     const token = jwt.sign(
       { username, role: 'admin' },

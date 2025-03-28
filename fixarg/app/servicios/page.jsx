@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dialog"
 import { ArrowLeft, Search, Clock, MapPin, Star, Filter, SlidersHorizontal } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import WorkerProfile from '@/components/worker-profile'
 
 export default function ServiciosPage() {
   const [trabajadores, setTrabajadores] = useState([])
@@ -129,6 +130,7 @@ export default function ServiciosPage() {
         formData
       })
 
+      // Enviar solicitud
       const response = await fetch('/api/solicitudes', {
         method: 'POST',
         headers: {
@@ -145,6 +147,29 @@ export default function ServiciosPage() {
       })
 
       const data = await response.json()
+
+      // Enviar notificación por WhatsApp al trabajador
+      const whatsappResponse = await fetch('/api/whatsapp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          phoneNumber: selectedTrabajador.phone,
+          message: formData.descripcion,
+          trabajadorId: selectedTrabajador._id,
+          solicitudId: data.id,
+          clienteNombre: user.firstName + ' ' + user.lastName,
+          clienteTelefono: user.phone,
+          fecha: formData.fecha,
+          hora: formData.hora
+        }),
+      })
+
+      const whatsappData = await whatsappResponse.json()
+      if (!whatsappData.success) {
+        console.error('Error al enviar notificación WhatsApp:', whatsappData.error)
+      }
 
       if (!response.ok) {
         throw new Error(data.error || 'Error al enviar la solicitud')

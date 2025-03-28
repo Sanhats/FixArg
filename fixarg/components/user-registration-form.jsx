@@ -119,13 +119,19 @@ export default function UserRegistrationForm() {
     setSubmitError(null)
     
     try {
-      console.log('Submitting form data:', formData)
+      // Asegurarse de que los datos numéricos sean realmente números
+      const processedFormData = {
+        ...formData,
+        streetNumber: formData.streetNumber ? String(formData.streetNumber) : "", // Convertir a string para evitar problemas con números
+      }
+      
+      console.log('Submitting form data:', processedFormData)
       const response = await fetch('/api/users', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(processedFormData),
       })
 
       const data = await response.json()

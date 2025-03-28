@@ -43,7 +43,11 @@ export default function LoginForm() {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.message || 'Error al iniciar sesión')
+        const errorMessage = data.error || data.message || 'Error al iniciar sesión';
+        if (response.status === 401) {
+          throw new Error('Usuario o contraseña incorrectos');
+        }
+        throw new Error(errorMessage);
       }
 
       login(data.token, data.user)

@@ -21,18 +21,43 @@ export async function POST(request) {
     const body = await request.json()
     console.log('Datos recibidos en API:', body) // Para debugging
 
-    // Validar los campos requeridos
-    if (!body.descripcion || !body.fecha || !body.hora || !body.trabajadorId || !body.usuarioId) {
-      const missingFields = []
-      if (!body.descripcion) missingFields.push('descripción')
-      if (!body.fecha) missingFields.push('fecha')
-      if (!body.hora) missingFields.push('hora')
-      if (!body.trabajadorId) missingFields.push('trabajadorId')
-      if (!body.usuarioId) missingFields.push('usuarioId')
+    // Validar los campos requeridos y su formato
+    const requiredFields = {
+      descripcion: 'descripción',
+      fecha: 'fecha',
+      hora: 'hora',
+      trabajadorId: 'trabajadorId',
+      usuarioId: 'usuarioId'
+    }
 
+    const missingFields = []
+    const invalidFields = []
+
+    for (const [field, label] of Object.entries(requiredFields)) {
+      if (!body[field]) {
+        missingFields.push(label)
+        continue
+      }
+
+      // Validación específica para IDs
+      if ((field === 'trabajadorId' || field === 'usuarioId') && !ObjectId.isValid(body[field])) {
+        invalidFields.push(`${label} inválido`)
+      }
+    }
+
+    if (missingFields.length > 0) {
+      console.log('Campos faltantes:', missingFields)
       return NextResponse.json({ 
         error: 'Faltan datos requeridos', 
         missingFields 
+      }, { status: 400 })
+    }
+
+    if (invalidFields.length > 0) {
+      console.log('Campos inválidos:', invalidFields)
+      return NextResponse.json({ 
+        error: 'Formato inválido en algunos campos', 
+        invalidFields 
       }, { status: 400 })
     }
 

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '@/lib/AuthContext'
 import { useRouter } from 'next/navigation'
 import { Button } from "@/components/ui/button"
+import Reviews from '@/components/reviews'
 import {
   Card,
   CardContent,
@@ -28,6 +29,7 @@ export default function TrabajadorDashboard() {
   const [solicitudes, setSolicitudes] = useState([])
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [averageRating, setAverageRating] = useState(0)
   const { user, getToken, isLoggedIn, isLoading } = useAuth()
   const router = useRouter()
 

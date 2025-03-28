@@ -6,34 +6,99 @@ if (!process.env.MONGODB_URI) {
 }
 
 const uri = process.env.MONGODB_URI
-const options = {}
+const options = {
+  maxPoolSize: 10,
+  minPoolSize: 5,
+  retryWrites: true,
+  w: 'majority',
+  wtimeoutMS: 10000,
+  connectTimeoutMS: 60000,
+  socketTimeoutMS: 150000,
+  serverSelectionTimeoutMS: 60000
+}
 
 let client
 let clientPromise
 
+const MAX_RETRIES = 5
+const RETRY_DELAY_MS = 2000
+
+async function connectWithRetry() {
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const newClient = new MongoClient(uri, options)
+      await newClient.connect()
+      console.log(`Successfully connected to MongoDB on attempt ${attempt}`)
+      return newClient
+    } catch (error) {
+      console.error(`Connection attempt ${attempt} failed:`, error)
+      if (attempt === MAX_RETRIES) throw error
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS * attempt))
+    }
+  }
+}
+
 if (process.env.NODE_ENV === 'development') {
   if (!global._mongoClientPromise) {
-    client = new MongoClient(uri, options)
-    global._mongoClientPromise = client.connect()
+    global._mongoClientPromise = connectWithRetry()
+      .then(newClient => {
+        client = newClient
+        return client
+      })
+      .catch(error => {
+        console.error('Failed to establish initial connection:', error)
+        throw error
+      })
   }
   clientPromise = global._mongoClientPromise
 } else {
-  client = new MongoClient(uri, options)
-  clientPromise = client.connect()
+  clientPromise = connectWithRetry()
+    .then(newClient => {
+      client = newClient
+      return client
+    })
+    .catch(error => {
+      console.error('Failed to establish initial connection:', error)
+      throw error
+    })
 }
 
 export default clientPromise
 
 export async function connectToDatabase() {
-  try {
-    const client = await clientPromise
-    // Use the exact case of the database name as it exists in MongoDB Atlas
-    const db = client.db('FixArg')
-    console.log('Successfully connected to MongoDB')
-    return { client, db }
-  } catch (error) {
-    console.error('Failed to connect to MongoDB:', error)
-    throw error
+  const MAX_RETRIES = 5;
+  const BASE_DELAY = 2000; // 2 seconds
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const client = await clientPromise;
+      if (!client.topology || !client.topology.isConnected()) {
+        console.log(`Reconnecting to MongoDB (attempt ${attempt}/${MAX_RETRIES})...`);
+        await client.connect();
+      }
+      const db = client.db('FixArg');
+      return { client, db };
+    } catch (error) {
+      console.error(`Failed to connect to MongoDB (attempt ${attempt}/${MAX_RETRIES}):`, error);
+      
+      if (attempt === MAX_RETRIES) {
+        console.error('Max retries reached. Throwing error.');
+        throw error;
+      }
+
+      const isNetworkError = 
+        error.name === 'MongoNetworkError' || 
+        error.code === 'ECONNRESET' || 
+        error.message.includes('ECONNRESET');
+
+      if (!isNetworkError) {
+        throw error;
+      }
+
+      const delay = BASE_DELAY * Math.pow(2, attempt - 1); // Exponential backoff
+      console.log(`Waiting ${delay}ms before retry...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
   }
 }
 

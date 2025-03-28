@@ -5,10 +5,16 @@ import { v4 as uuidv4 } from 'uuid';
 // Configurar el transporter de Nodemailer
 const transporter = nodemailer.createTransport({
   service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true,
   auth: {
     user: process.env.GMAIL_USER,
     pass: process.env.GMAIL_PASS,
   },
+  tls: {
+    rejectUnauthorized: false
+  }
 });
 
 // Almacenamiento en memoria para los códigos de verificación (reemplazar con una base de datos en producción)

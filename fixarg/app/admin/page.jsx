@@ -45,9 +45,12 @@ export default function AdminPanel() {
       setLoading(true);
       setError(null);
       
+      const token = localStorage.getItem('adminToken');
+      console.log('Token en localStorage:', token ? 'Token presente' : 'Token ausente');
+      
       const response = await fetch('/api/admin/professionals', {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+          'Authorization': `Bearer ${token}`
         }
       });
 
@@ -67,7 +70,9 @@ export default function AdminPanel() {
 
   useEffect(() => {
     const token = localStorage.getItem('adminToken');
+    console.log('Token en useEffect:', token ? 'Token presente' : 'Token ausente');
     if (!token) {
+      console.log('No hay token, redirigiendo a login');
       router.push('/admin/login');
       return;
     }
