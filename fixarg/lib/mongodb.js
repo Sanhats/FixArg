@@ -6,33 +6,37 @@ if (!process.env.MONGODB_URI) {
 
 const uri = process.env.MONGODB_URI
 const options = {
-  maxPoolSize: 5,
+  maxPoolSize: 3,
   minPoolSize: 1,
   retryWrites: true,
   w: 'majority',
-  wtimeoutMS: 30000,
-  connectTimeoutMS: 30000,
-  socketTimeoutMS: 45000,
-  serverSelectionTimeoutMS: 30000,
+  wtimeoutMS: 15000,
+  connectTimeoutMS: 15000,
+  socketTimeoutMS: 20000,
+  serverSelectionTimeoutMS: 15000,
   keepAlive: true,
   useNewUrlParser: true,
   useUnifiedTopology: true,
-  heartbeatFrequencyMS: 20000,
+  heartbeatFrequencyMS: 10000,
   autoReconnect: true,
-  reconnectTries: Number.MAX_VALUE,
+  reconnectTries: 3,
   reconnectInterval: 1000,
-  poolSize: 5
+  poolSize: 3
 }
 
-const MAX_RETRIES = 5
-const RETRY_DELAY_MS = 2000
-const MAX_RECONNECT_ATTEMPTS = 3
-const MAX_BACKOFF_MS = 10000
+const MAX_RETRIES = 3
+const RETRY_DELAY_MS = 1000
+const MAX_RECONNECT_ATTEMPTS = 2
+const MAX_BACKOFF_MS = 5000
 let client
 let clientPromise
 let isConnecting = false
 
 async function connectWithRetry(attempt = 1, reconnectAttempt = 1) {
+  if (client && client.topology?.isConnected()) {
+    console.log('Ya existe una conexión activa a MongoDB')
+    return client
+  }
   if (isConnecting) {
     console.log('Ya hay un intento de conexión en curso...')
     return

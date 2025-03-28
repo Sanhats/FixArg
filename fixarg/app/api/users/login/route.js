@@ -162,31 +162,41 @@ export async function POST(request) {
     let errorMessage = 'Error en el servidor';
     let errorDetails = error.message;
 
-    // Manejo específico de errores
+    // Manejo específico de errores con timeouts más cortos
     if (error.name === 'MongoNetworkError' || 
         error.message.includes('ECONNREFUSED') || 
         error.message.includes('Timeout') ||
         error.message.includes('Error de conexión a la base de datos')) {
       statusCode = 503;
-      errorMessage = 'Error de conexión a la base de datos';
-      errorDetails = 'No se pudo conectar a la base de datos. Por favor, intente nuevamente.';
-    } else if (error.name === 'ValidationError' || 
-               error.message.includes('invalid') ||
-               error.message.includes('JWT_SECRET')) {
+      errorMessage = 'Error de conexión';
+      errorDetails = 'Servicio temporalmente no disponible. Por favor, intente nuevamente.';
+      return NextResponse.json({ error: errorMessage, details: errorDetails, requestId }, { status: statusCode });
+    } 
+    
+    if (error.name === 'ValidationError' || 
+        error.message.includes('invalid') ||
+        error.message.includes('JWT_SECRET')) {
       statusCode = 400;
       errorMessage = 'Error de validación';
-      errorDetails = 'Los datos proporcionados son inválidos o falta configuración del servidor.';
-    } else if (error.name === 'UnauthorizedError' || 
-               error.message.includes('unauthorized') ||
-               error.message.includes('Credenciales')) {
+      errorDetails = 'Datos inválidos o error de configuración.';
+      return NextResponse.json({ error: errorMessage, details: errorDetails, requestId }, { status: statusCode });
+    } 
+    
+    if (error.name === 'UnauthorizedError' || 
+        error.message.includes('unauthorized') ||
+        error.message.includes('Credenciales')) {
       statusCode = 401;
       errorMessage = 'Autenticación fallida';
-      errorDetails = 'Credenciales inválidas o sesión expirada.';
-    } else if (error.name === 'SyntaxError' || 
-               error.message.includes('JSON')) {
+      errorDetails = 'Credenciales inválidas.';
+      return NextResponse.json({ error: errorMessage, details: errorDetails, requestId }, { status: statusCode });
+    } 
+    
+    if (error.name === 'SyntaxError' || 
+        error.message.includes('JSON')) {
       statusCode = 400;
-      errorMessage = 'Error en el formato de la solicitud';
-      errorDetails = 'Los datos enviados no tienen el formato correcto.';
+      errorMessage = 'Error de formato';
+      errorDetails = 'Formato de datos inválido.';
+      return NextResponse.json({ error: errorMessage, details: errorDetails, requestId }, { status: statusCode });
     }
 
     return NextResponse.json(
