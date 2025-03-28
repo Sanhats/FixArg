@@ -66,7 +66,7 @@ export async function POST(request) {
     const db = dbConnection.db;
     if (!db) {
       console.error(`[${requestId}] Objeto de base de datos no disponible`);
-      throw new Error('Error al obtener la instancia de la base de datos'
+      throw new Error('Error al obtener la instancia de la base de datos');
     }
 
     let user;
