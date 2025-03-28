@@ -62,8 +62,6 @@ export async function POST(request) {
 
     if (!db) {
       throw new Error(`Error al conectar con la base de datos después de múltiples intentos: ${lastError?.message}`)
-    } catch (error) {
-      throw new Error('Error al conectar con la base de datos: ' + error.message)
     }
 
     const user = await db.collection('usuarios').findOne({ email })
