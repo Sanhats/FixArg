@@ -1,4 +1,5 @@
 import { MongoClient } from 'mongodb'
+import bcrypt from 'bcryptjs'
 
 if (!process.env.MONGODB_URI) {
   throw new Error('Error de configuración: MONGODB_URI no está definido en las variables de entorno')
