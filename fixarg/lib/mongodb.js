@@ -88,7 +88,9 @@ async function connectWithRetry(attempt = 1, reconnectAttempt = 1) {
       const delay = RETRY_DELAY_MS * Math.pow(2, attempt - 1)
       console.log(`Waiting ${delay}ms before retry...`)
       await new Promise(resolve => setTimeout(resolve, delay))
+      return connectWithRetry(attempt + 1, reconnectAttempt)
     }
+    isConnecting = false
   }
 }
 
