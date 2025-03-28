@@ -223,7 +223,7 @@ export default function HomePage() {
                   ))}
                 </div>
                 <p className="text-gray-600 text-sm">
-                  "El servicio fue excelente. El profesional llegó puntual y trabajó eficientemente."
+                  &quot;El servicio fue excelente. El profesional llegó puntual y trabajó eficientemente.&quot;
                 </p>
                 <div className="flex items-center gap-2 mt-2">
                   <div className="w-6 h-6 rounded-full bg-[#71816D]/20 flex items-center justify-center text-[#71816D] font-bold text-xs">
