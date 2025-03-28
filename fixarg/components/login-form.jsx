@@ -66,14 +66,14 @@ export default function LoginForm() {
       <DialogTrigger asChild>
         <Button variant="ghost">Iniciar sesión</Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px]" aria-describedby="login-form-description">
         <DialogHeader>
           <DialogTitle className="text-lg sm:text-xl">Iniciar sesión</DialogTitle>
-          <DialogDescription className="text-sm sm:text-base">
+          <DialogDescription id="login-form-description" className="text-sm sm:text-base">
             Ingresa tus credenciales para acceder a tu cuenta.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6" aria-label="Formulario de inicio de sesión">
           <div className="space-y-2">
             <Label htmlFor="login-email" className="text-sm sm:text-base">
               Correo electrónico
@@ -86,6 +86,8 @@ export default function LoginForm() {
               required
               className="text-sm sm:text-base"
               autoComplete="email"
+              aria-required="true"
+              aria-invalid={submitError ? "true" : "false"}
             />
           </div>
           <div className="space-y-2">
@@ -100,10 +102,12 @@ export default function LoginForm() {
               required
               className="text-sm sm:text-base"
               autoComplete="current-password"
+              aria-required="true"
+              aria-invalid={submitError ? "true" : "false"}
             />
           </div>
           {submitError && (
-            <div className="text-red-500 text-sm sm:text-base bg-red-50 p-3 rounded-md">
+            <div role="alert" className="text-red-500 text-sm sm:text-base bg-red-50 p-3 rounded-md">
               {submitError}
             </div>
           )}
@@ -111,6 +115,7 @@ export default function LoginForm() {
             type="submit"
             className="w-full bg-[#324376] text-white hover:bg-[#324376]/90 text-sm sm:text-base"
             disabled={isSubmitting}
+            aria-busy={isSubmitting}
           >
             {isSubmitting ? "Iniciando sesión..." : "Iniciar sesión"}
           </Button>
