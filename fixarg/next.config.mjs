@@ -2,15 +2,43 @@
 import dotenv from 'dotenv';
 dotenv.config();
 const nextConfig = {
-  // Asegurarse de que los estilos se carguen correctamente
+  // Configuración optimizada para Vercel
   poweredByHeader: false,
   reactStrictMode: true,
   swcMinify: true,
   
+  // Optimización de CSS para evitar problemas de carga
+  optimizeFonts: true,
+  compiler: {
+    // Eliminar clases CSS no utilizadas en producción
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
+  
   // Configuración para manejo de assets estáticos
   images: {
     domains: ['vercel.com'],
-    unoptimized: true,
+    // Mantener optimización de imágenes en Vercel
+    unoptimized: false,
+  },
+  
+  // Configuración específica para CSS Modules
+  webpack: (config) => {
+    // Asegurar que los módulos CSS se procesen correctamente
+    const rules = config.module.rules
+    .find((rule) => typeof rule.oneOf === 'object')
+    .oneOf.filter((rule) => Array.isArray(rule.use));
+    
+    rules.forEach((rule) => {
+      rule.use.forEach((moduleLoader) => {
+        if (moduleLoader.loader?.includes('css-loader') && !moduleLoader.loader?.includes('postcss-loader')) {
+          if (moduleLoader.options?.modules) {
+            moduleLoader.options.modules.exportLocalsConvention = 'camelCase';
+          }
+        }
+      });
+    });
+    
+    return config;
   },
   
   async headers() {
