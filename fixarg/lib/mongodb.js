@@ -7,28 +7,26 @@ if (!process.env.MONGODB_URI) {
 
 const uri = process.env.MONGODB_URI
 const options = {
-  maxPoolSize: 1,
-  minPoolSize: 0,
+  maxPoolSize: 10,
+  minPoolSize: 1,
   retryWrites: true,
   w: 'majority',
-  wtimeoutMS: 5000,
-  connectTimeoutMS: 5000,
-  socketTimeoutMS: 7500,
-  serverSelectionTimeoutMS: 5000,
+  wtimeoutMS: 10000,
+  connectTimeoutMS: 10000,
+  socketTimeoutMS: 15000,
+  serverSelectionTimeoutMS: 10000,
   keepAlive: true,
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  heartbeatFrequencyMS: 5000,
-  maxConnecting: 1,
-  maxIdleTimeMS: 15000,
-  waitQueueTimeoutMS: 5000,
+  heartbeatFrequencyMS: 10000,
+  maxConnecting: 2,
+  maxIdleTimeMS: 30000,
+  waitQueueTimeoutMS: 10000,
   compressors: ['zlib']
 }
 
-const MAX_RETRIES = 2
-const RETRY_DELAY_MS = 500
-const MAX_RECONNECT_ATTEMPTS = 1
-const MAX_BACKOFF_MS = 2000
+const MAX_RETRIES = 5
+const RETRY_DELAY_MS = 1000
+const MAX_RECONNECT_ATTEMPTS = 3
+const MAX_BACKOFF_MS = 5000
 let client
 let clientPromise
 let isConnecting = false
@@ -149,8 +147,8 @@ if (process.env.NODE_ENV === 'development') {
 export default clientPromise
 
 export async function connectToDatabase() {
-  const LOCAL_MAX_RETRIES = 2;
-  const BASE_DELAY = 500; // 0.5 second
+  const LOCAL_MAX_RETRIES = 5;
+  const BASE_DELAY = 1000; // 1 second
 
   for (let attempt = 1; attempt <= LOCAL_MAX_RETRIES; attempt++) {
     try {
@@ -197,15 +195,29 @@ export async function connectToDatabase() {
         error.name === 'MongoNetworkError' || 
         error.code === 'ECONNRESET' || 
         error.message.includes('ECONNRESET') ||
-        error.message.includes('getaddrinfo ENOTFOUND');
+        error.message.includes('getaddrinfo ENOTFOUND') ||
+        error.message.includes('connection timed out') ||
+        error.message.includes('connect ETIMEDOUT') ||
+        error.message.includes('socket timeout') ||
+        error.message.includes('network timeout');
 
       if (!isNetworkError) {
         throw error;
       }
 
-      const delay = BASE_DELAY * Math.pow(1.5, attempt - 1); // Exponential backoff with smaller multiplier
-      console.log(`Waiting ${delay}ms before retry...`);
+      const delay = BASE_DELAY * Math.pow(2, attempt - 1); // Exponential backoff with larger multiplier
+      console.log(`Waiting ${delay}ms before retry attempt ${attempt+1}/${LOCAL_MAX_RETRIES}...`);
       await new Promise(resolve => setTimeout(resolve, delay));
+      
+      // Intentar limpiar recursos antes del siguiente intento
+      if (client && typeof client.close === 'function') {
+        try {
+          await client.close(true);
+          console.log('Closed previous connection before retry');
+        } catch (closeError) {
+          console.warn('Error closing previous connection:', closeError.message);
+        }
+      }
     }
   }
 }
