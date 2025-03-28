@@ -6,28 +6,28 @@ if (!process.env.MONGODB_URI) {
 
 const uri = process.env.MONGODB_URI
 const options = {
-  maxPoolSize: 3,
-  minPoolSize: 1,
+  maxPoolSize: 1,
+  minPoolSize: 0,
   retryWrites: true,
   w: 'majority',
-  wtimeoutMS: 10000,
-  connectTimeoutMS: 10000,
-  socketTimeoutMS: 15000,
-  serverSelectionTimeoutMS: 10000,
+  wtimeoutMS: 5000,
+  connectTimeoutMS: 5000,
+  socketTimeoutMS: 7500,
+  serverSelectionTimeoutMS: 5000,
   keepAlive: true,
   useNewUrlParser: true,
   useUnifiedTopology: true,
-  heartbeatFrequencyMS: 10000,
+  heartbeatFrequencyMS: 5000,
   maxConnecting: 1,
-  maxIdleTimeMS: 30000,
-  waitQueueTimeoutMS: 10000,
+  maxIdleTimeMS: 15000,
+  waitQueueTimeoutMS: 5000,
   compressors: ['zlib']
 }
 
-const MAX_RETRIES = 3
-const RETRY_DELAY_MS = 1000
-const MAX_RECONNECT_ATTEMPTS = 2
-const MAX_BACKOFF_MS = 5000
+const MAX_RETRIES = 2
+const RETRY_DELAY_MS = 500
+const MAX_RECONNECT_ATTEMPTS = 1
+const MAX_BACKOFF_MS = 2000
 let client
 let clientPromise
 let isConnecting = false
