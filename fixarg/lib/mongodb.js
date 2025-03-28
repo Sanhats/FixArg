@@ -74,6 +74,7 @@ async function connectWithRetry(attempt = 1, reconnectAttempt = 1) {
       }
     })
     
+    isConnecting = false
     return newClient
     } catch (error) {
       console.error(`Connection attempt ${attempt} failed:`, error)
@@ -83,14 +84,15 @@ async function connectWithRetry(attempt = 1, reconnectAttempt = 1) {
           error: error.message,
           stack: error.stack
         })
+        isConnecting = false
         throw error
       }
       const delay = RETRY_DELAY_MS * Math.pow(2, attempt - 1)
       console.log(`Waiting ${delay}ms before retry...`)
       await new Promise(resolve => setTimeout(resolve, delay))
+      isConnecting = false
       return connectWithRetry(attempt + 1, reconnectAttempt)
     }
-    isConnecting = false
   }
 }
 
