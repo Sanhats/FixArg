@@ -7,21 +7,24 @@ if (!process.env.MONGODB_URI) {
 
 const uri = process.env.MONGODB_URI
 const options = {
-  maxPoolSize: 10,
-  minPoolSize: 5,
+  maxPoolSize: 5,
+  minPoolSize: 2,
   retryWrites: true,
   w: 'majority',
-  wtimeoutMS: 10000,
-  connectTimeoutMS: 60000,
-  socketTimeoutMS: 150000,
-  serverSelectionTimeoutMS: 60000
+  wtimeoutMS: 30000,
+  connectTimeoutMS: 30000,
+  socketTimeoutMS: 45000,
+  serverSelectionTimeoutMS: 30000,
+  keepAlive: true,
+  useNewUrlParser: true,
+  useUnifiedTopology: true
 }
 
 let client
 let clientPromise
 
-const MAX_RETRIES = 5
-const RETRY_DELAY_MS = 2000
+const MAX_RETRIES = 3
+const RETRY_DELAY_MS = 1000
 
 async function connectWithRetry() {
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
@@ -29,11 +32,35 @@ async function connectWithRetry() {
       const newClient = new MongoClient(uri, options)
       await newClient.connect()
       console.log(`Successfully connected to MongoDB on attempt ${attempt}`)
+      
+      // Configurar event listeners para monitorear la conexión
+      newClient.on('close', () => {
+        console.warn('MongoDB connection closed. Attempting to reconnect...')
+        connectWithRetry()
+      })
+      
+      newClient.on('error', (error) => {
+        console.error('MongoDB connection error:', error)
+        if (!newClient.isConnected()) {
+          console.warn('Connection lost. Attempting to reconnect...')
+          connectWithRetry()
+        }
+      })
+      
       return newClient
     } catch (error) {
       console.error(`Connection attempt ${attempt} failed:`, error)
-      if (attempt === MAX_RETRIES) throw error
-      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS * attempt))
+      if (attempt === MAX_RETRIES) {
+        console.error('Max retries reached. Throwing error with details:', {
+          uri: uri.replace(/\/\/[^:]+:[^@]+@/, '//***:***@'),
+          error: error.message,
+          stack: error.stack
+        })
+        throw error
+      }
+      const delay = RETRY_DELAY_MS * Math.pow(2, attempt - 1)
+      console.log(`Waiting ${delay}ms before retry...`)
+      await new Promise(resolve => setTimeout(resolve, delay))
     }
   }
 }
@@ -66,8 +93,8 @@ if (process.env.NODE_ENV === 'development') {
 export default clientPromise
 
 export async function connectToDatabase() {
-  const MAX_RETRIES = 5;
-  const BASE_DELAY = 2000; // 2 seconds
+  const MAX_RETRIES = 3;
+  const BASE_DELAY = 1000; // 1 second
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
@@ -77,25 +104,45 @@ export async function connectToDatabase() {
         await client.connect();
       }
       const db = client.db('FixArg');
+      
+      // Verificar la conexión antes de retornar
+      const ping = await db.command({ ping: 1 });
+      if (ping.ok !== 1) {
+        throw new Error('Database ping failed');
+      }
+      
       return { client, db };
     } catch (error) {
-      console.error(`Failed to connect to MongoDB (attempt ${attempt}/${MAX_RETRIES}):`, error);
+      console.error(`Failed to connect to MongoDB (attempt ${attempt}/${MAX_RETRIES}):`, {
+        error: error.message,
+        name: error.name,
+        code: error.code,
+        stack: error.stack
+      });
       
       if (attempt === MAX_RETRIES) {
-        console.error('Max retries reached. Throwing error.');
-        throw error;
+        const errorDetails = {
+          message: error.message,
+          type: error.name,
+          code: error.code,
+          attempt: attempt,
+          uri: process.env.MONGODB_URI?.replace(/\/\/[^:]+:[^@]+@/, '//***:***@')
+        };
+        console.error('Max retries reached. Error details:', errorDetails);
+        throw new Error(`Database connection failed after ${MAX_RETRIES} attempts: ${error.message}`);
       }
 
       const isNetworkError = 
         error.name === 'MongoNetworkError' || 
         error.code === 'ECONNRESET' || 
-        error.message.includes('ECONNRESET');
+        error.message.includes('ECONNRESET') ||
+        error.message.includes('getaddrinfo ENOTFOUND');
 
       if (!isNetworkError) {
         throw error;
       }
 
-      const delay = BASE_DELAY * Math.pow(2, attempt - 1); // Exponential backoff
+      const delay = BASE_DELAY * Math.pow(1.5, attempt - 1); // Exponential backoff with smaller multiplier
       console.log(`Waiting ${delay}ms before retry...`);
       await new Promise(resolve => setTimeout(resolve, delay));
     }

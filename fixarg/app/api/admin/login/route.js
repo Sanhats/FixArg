@@ -3,19 +3,68 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
 export async function POST(request) {
-  console.log('Env Variables Loaded:', {
-    usernameEnv: process.env.ADMIN_USERNAME,
-    passwordHashEnv: "$2a$10$MI57y.ssXPB7eBGqEB2qVerUEsZqLKOQQY7j3M0okUxUdO/PkZAWG",
-    jwtSecretEnv: process.env.JWT_SECRET
-  });
+  try {
+    // Verificar variables de entorno al inicio
+    if (!process.env.ADMIN_USERNAME || !process.env.JWT_SECRET) {
+      console.error('Missing critical environment variables');
+      return new Response(
+        JSON.stringify({
+          error: 'Server configuration error',
+          details: 'Missing critical environment variables'
+        }),
+        { 
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+          }
+        }
+      );
+    }
+
+    console.log('Environment check passed, processing request');
   
   try {
-    const body = await request.json().catch(() => null);
-    if (!body) {
-      console.error('Invalid JSON body');
-      return NextResponse.json(
-        { error: 'Invalid request body' },
-        { status: 400 }
+    let body;
+    try {
+      body = await request.json();
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      return new Response(
+        JSON.stringify({
+          error: 'Invalid request format',
+          details: 'Unable to parse request body as JSON'
+        }),
+        { 
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+          }
+        }
+      );
+    }
+
+    if (!body || !body.username || !body.password) {
+      console.error('Missing required fields in request body');
+      return new Response(
+        JSON.stringify({
+          error: 'Invalid request',
+          details: 'Username and password are required'
+        }),
+        { 
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+          }
+        }
       );
     }
 
@@ -97,10 +146,43 @@ export async function POST(request) {
       }
     );
   } catch (error) {
-    console.error('Detailed login error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error', details: error.message },
-      { status: 500 }
+    console.error('Detailed login error:', {
+      message: error.message,
+      stack: error.stack,
+      type: error.name
+    });
+
+    let statusCode = 500;
+    let errorMessage = 'Internal server error';
+    let errorDetails = error.message;
+
+    if (error.name === 'MongoNetworkError' || error.message.includes('ECONNREFUSED')) {
+      statusCode = 503;
+      errorMessage = 'Database connection error';
+      errorDetails = 'Unable to connect to database';
+    } else if (error.name === 'ValidationError') {
+      statusCode = 400;
+      errorMessage = 'Validation error';
+    } else if (error.name === 'UnauthorizedError') {
+      statusCode = 401;
+      errorMessage = 'Authentication failed';
+    }
+
+    return new Response(
+      JSON.stringify({
+        error: errorMessage,
+        details: errorDetails,
+        requestId: Date.now().toString(36)
+      }),
+      { 
+        status: statusCode,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'POST, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+        }
+      }
     );
   }
 }
