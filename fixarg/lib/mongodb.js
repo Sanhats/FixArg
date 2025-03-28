@@ -15,7 +15,7 @@ const options = {
   connectTimeoutMS: 10000,
   socketTimeoutMS: 15000,
   serverSelectionTimeoutMS: 10000,
-  keepAlive: true,
+  // keepAlive: true, // Eliminado porque no es compatible con MongoDB 6.x en entorno serverless
   heartbeatFrequencyMS: 10000,
   maxConnecting: 2,
   maxIdleTimeMS: 30000,
