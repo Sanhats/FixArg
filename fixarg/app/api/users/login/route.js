@@ -5,15 +5,24 @@ import { sign } from 'jsonwebtoken'
 
 export async function POST(request) {
   try {
-    // Validar el cuerpo de la solicitud
-    if (!request.body) {
+    let body;
+    try {
+      body = await request.json();
+    } catch (e) {
+      return NextResponse.json(
+        { error: 'Formato JSON inválido', details: 'Los datos enviados no tienen un formato JSON válido' },
+        { status: 400 }
+      );
+    }
+
+    if (!body) {
       return NextResponse.json(
         { error: 'Datos de solicitud inválidos' },
         { status: 400 }
-      )
+      );
     }
 
-    const { email, password } = await request.json()
+    const { email, password } = body
 
     // Validar campos requeridos
     if (!email || !password) {
@@ -23,16 +32,36 @@ export async function POST(request) {
       )
     }
 
-    // Intentar conectar a la base de datos con timeout
-    let db
-    try {
-      const dbConnection = await Promise.race([
-        connectToDatabase(),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Timeout al conectar a la base de datos')), 10000)
-        )
-      ])
-      db = dbConnection.db
+    if (!process.env.JWT_SECRET) {
+      throw new Error('JWT_SECRET no está configurado');
+    }
+
+    // Intentar conectar a la base de datos con timeout y reintentos
+    let db;
+    let retries = 3;
+    let lastError;
+
+    while (retries > 0) {
+      try {
+        const dbConnection = await Promise.race([
+          connectToDatabase(),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Timeout al conectar a la base de datos')), 5000)
+          )
+        ]);
+        db = dbConnection.db;
+        break;
+      } catch (error) {
+        lastError = error;
+        retries--;
+        if (retries > 0) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+    }
+
+    if (!db) {
+      throw new Error(`Error al conectar con la base de datos después de múltiples intentos: ${lastError?.message}`)
     } catch (error) {
       throw new Error('Error al conectar con la base de datos: ' + error.message)
     }
@@ -76,13 +105,19 @@ export async function POST(request) {
     })
   } catch (error) {
     // Log detallado del error
-    console.error('Login error:', {
+    const errorLog = {
       message: error.message,
-      stack: error.stack,
       type: error.name,
       timestamp: new Date().toISOString(),
-      requestData: { email: email ? '***' : undefined }
-    })
+      path: '/api/users/login'
+    };
+    
+    // Solo incluir stack trace en desarrollo
+    if (process.env.NODE_ENV === 'development') {
+      errorLog.stack = error.stack;
+    }
+    
+    console.error('Login error:', errorLog)
 
     let statusCode = 500;
     let errorMessage = 'Error en el servidor';
