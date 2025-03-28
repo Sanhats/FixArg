@@ -96,7 +96,7 @@ export default function TrabajadorDashboard() {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="text-center">
-          <h2 className="text-xl font-semibold mb-2">Cargando solicitudes...</h2>
+          <h2 className="text-xl font-semibold mb-2">Cargando...</h2>
           <p className="text-muted-foreground">Por favor espere</p>
         </div>
       </div>
