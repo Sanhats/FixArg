@@ -1,53 +1,80 @@
 import { MongoClient } from 'mongodb'
-import bcrypt from 'bcrypt'
 
 if (!process.env.MONGODB_URI) {
-  throw new Error('Please add your Mongo URI to .env.local')
+  throw new Error('Error de configuración: MONGODB_URI no está definido en las variables de entorno')
 }
 
 const uri = process.env.MONGODB_URI
 const options = {
-  maxPoolSize: 5,
-  minPoolSize: 2,
+  maxPoolSize: 10,
+  minPoolSize: 5,
   retryWrites: true,
   w: 'majority',
-  wtimeoutMS: 30000,
-  connectTimeoutMS: 30000,
-  socketTimeoutMS: 45000,
-  serverSelectionTimeoutMS: 30000,
+  wtimeoutMS: 60000,
+  connectTimeoutMS: 60000,
+  socketTimeoutMS: 75000,
+  serverSelectionTimeoutMS: 60000,
   keepAlive: true,
   useNewUrlParser: true,
-  useUnifiedTopology: true
+  useUnifiedTopology: true,
+  heartbeatFrequencyMS: 10000
 }
 
 let client
 let clientPromise
+let isConnecting = false
 
-const MAX_RETRIES = 3
-const RETRY_DELAY_MS = 1000
+const MAX_RETRIES = 5
+const RETRY_DELAY_MS = 2000
+const MAX_RECONNECT_ATTEMPTS = 3
 
-async function connectWithRetry() {
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      const newClient = new MongoClient(uri, options)
-      await newClient.connect()
-      console.log(`Successfully connected to MongoDB on attempt ${attempt}`)
-      
-      // Configurar event listeners para monitorear la conexión
-      newClient.on('close', () => {
-        console.warn('MongoDB connection closed. Attempting to reconnect...')
-        connectWithRetry()
+async function connectWithRetry(attempt = 1, reconnectAttempt = 1) {
+  if (isConnecting) {
+    console.log('Ya hay un intento de conexión en curso...')
+    return
+  }
+
+  isConnecting = true
+
+  try {
+    console.log(`Intento de conexión ${attempt}/${MAX_RETRIES} a MongoDB...`)
+    const newClient = new MongoClient(uri, options)
+    await newClient.connect()
+    console.log('Conexión exitosa a MongoDB')
+    
+    newClient.on('close', () => {
+      console.warn(`Conexión a MongoDB cerrada. Intento de reconexión ${reconnectAttempt}/${MAX_RECONNECT_ATTEMPTS}`)
+      if (reconnectAttempt <= MAX_RECONNECT_ATTEMPTS) {
+        setTimeout(() => {
+          connectWithRetry(1, reconnectAttempt + 1)
+        }, RETRY_DELAY_MS)
+      } else {
+        console.error('Se alcanzó el límite máximo de intentos de reconexión')
+        process.exit(1)
+      }
+    })
+    
+    newClient.on('error', (error) => {
+      console.error('Error en la conexión de MongoDB:', {
+        message: error.message,
+        code: error.code,
+        name: error.name
       })
       
-      newClient.on('error', (error) => {
-        console.error('MongoDB connection error:', error)
-        if (!newClient.isConnected()) {
-          console.warn('Connection lost. Attempting to reconnect...')
-          connectWithRetry()
+      if (!newClient.topology?.isConnected()) {
+        if (reconnectAttempt <= MAX_RECONNECT_ATTEMPTS) {
+          console.warn('Conexión perdida. Intentando reconectar...')
+          setTimeout(() => {
+            connectWithRetry(1, reconnectAttempt + 1)
+          }, RETRY_DELAY_MS)
+        } else {
+          console.error('Se alcanzó el límite máximo de intentos de reconexión')
+          process.exit(1)
         }
-      })
-      
-      return newClient
+      }
+    })
+    
+    return newClient
     } catch (error) {
       console.error(`Connection attempt ${attempt} failed:`, error)
       if (attempt === MAX_RETRIES) {
