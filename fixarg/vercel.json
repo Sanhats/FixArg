@@ -5,15 +5,12 @@
       "maxDuration": 10
     }
   },
-  "routes": [
-    { "src": "/api/(.*)", "dest": "/api/$1" },
-    { "src": "/servicios/(.*)", "dest": "/servicios/$1" },
-    { "src": "/trabajador/(.*)", "dest": "/trabajador/$1" },
-    { "src": "/admin/(.*)", "dest": "/admin/$1" },
-    { "src": "/_next/static/(.*)", "dest": "/_next/static/$1" },
-    { "src": "/static/(.*)", "dest": "/static/$1" },
-    { "src": "/(.*\\.(js|json|css|ico|png|jpg|jpeg|svg|webp))", "dest": "/$1" },
-    { "src": "/(.*)", "dest": "/" }
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api/:path*" },
+    { "source": "/servicios/:path*", "destination": "/servicios/:path*" },
+    { "source": "/trabajador/:path*", "destination": "/trabajador/:path*" },
+    { "source": "/admin/:path*", "destination": "/admin/:path*" },
+    { "source": "/:path*", "destination": "/:path*" }
   ],
   "env": {
     "NEXT_PUBLIC_VERCEL_URL": "${VERCEL_URL}"
