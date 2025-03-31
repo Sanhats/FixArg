@@ -4,6 +4,11 @@ import { ObjectId } from 'mongodb';
 
 export async function POST(request) {
   try {
+    // Verificar que la solicitud sea válida
+    if (!request.body) {
+      return new Response(JSON.stringify({ success: false, error: 'Solicitud inválida' }), { status: 400 });
+    }
+    
     const { phoneNumber, message, trabajadorId, solicitudId, clienteNombre, clienteTelefono, fecha, hora } = await request.json();
 
     // Validar que todos los campos requeridos estén presentes y tengan el formato correcto
@@ -69,10 +74,14 @@ Por favor, responda "CONFIRMAR" para aceptar la solicitud o "RECHAZAR" para decl
     const result = await sendWhatsAppMessage(phoneNumber, mensajeFormateado);
 
     if (!result.success) {
+      // Registrar el error específico para depuración en Vercel
+      console.error('Error específico de Twilio:', result.error, result.details || '');
+      
       return new Response(
         JSON.stringify({
           success: false,
-          error: result.error || 'Error al enviar el mensaje de WhatsApp'
+          error: result.error || 'Error al enviar el mensaje de WhatsApp',
+          details: process.env.NODE_ENV === 'development' ? result.details : undefined
         }),
         { status: 500 }
       );

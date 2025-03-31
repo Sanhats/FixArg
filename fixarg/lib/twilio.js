@@ -64,6 +64,15 @@ async function sendWhatsAppMessage(to, message) {
     
     console.log('Enviando mensaje de WhatsApp a:', formattedNumber);
     
+    // Verificar que las credenciales de Twilio estén configuradas
+    if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN || !process.env.TWILIO_PHONE_NUMBER) {
+      console.error('Faltan credenciales de Twilio');
+      return {
+        success: false,
+        error: 'Configuración de Twilio incompleta'
+      };
+    }
+    
     const response = await client.messages.create({
       body: message,
       from: `whatsapp:${process.env.TWILIO_PHONE_NUMBER}`,
@@ -79,9 +88,40 @@ async function sendWhatsAppMessage(to, message) {
     };
   } catch (error) {
     console.error('Error sending WhatsApp message:', error);
+    
+    // Manejo específico de errores de Twilio para entorno serverless
+    let errorMessage = 'Error al enviar el mensaje de WhatsApp';
+    
+    if (error.code) {
+      // Códigos de error específicos de Twilio
+      switch (error.code) {
+        case 20003: // Authentication Error
+          errorMessage = 'Error de autenticación con Twilio. Verifique las credenciales.';
+          break;
+        case 20404: // Resource not found
+          errorMessage = 'Recurso no encontrado en Twilio. Verifique el número de teléfono.';
+          break;
+        case 21211: // Invalid phone number
+          errorMessage = 'Número de teléfono inválido o no compatible con WhatsApp.';
+          break;
+        case 21608: // The From phone number is not a valid, SMS-capable inbound phone number
+          errorMessage = 'El número de teléfono de origen no es válido para WhatsApp.';
+          break;
+        case 21610: // Message body is required
+          errorMessage = 'El cuerpo del mensaje es requerido.';
+          break;
+        case 21612: // The 'To' phone number is not currently reachable
+          errorMessage = 'El número de teléfono de destino no está disponible actualmente.';
+          break;
+        default:
+          errorMessage = `Error de Twilio: ${error.message}`;
+      }
+    }
+    
     return {
       success: false,
-      error: error.message
+      error: errorMessage,
+      details: error.message
     };
   }
 }
