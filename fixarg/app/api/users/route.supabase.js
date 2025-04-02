@@ -65,7 +65,6 @@ export async function POST(request) {
       // Si hay un error al verificar auth.users, continuamos con el registro
       console.log(`[${requestId}] Error al verificar auth.users:`, authCheckError);
     }
-    }
 
     // Crear dirección en Supabase
     const { data: addressData, error: addressError } = await supabaseAdmin
