@@ -62,8 +62,21 @@ export async function POST(request) {
         }, { status: 400 });
       }
     } catch (authCheckError) {
-      // Si hay un error al verificar auth.users, continuamos con el registro
+      // Si hay un error al verificar auth.users, verificamos el tipo de error
       console.log(`[${requestId}] Error al verificar auth.users:`, authCheckError);
+      
+      // Si el error es de tipo 404 (usuario no encontrado), continuamos con el registro
+      if (authCheckError.status === 404 || authCheckError.message?.includes('not found')) {
+        console.log(`[${requestId}] Usuario no encontrado en auth.users, continuando con el registro`);
+      } else {
+        // Para otros tipos de errores, devolvemos un mensaje de error
+        console.error(`[${requestId}] Error crítico al verificar auth.users:`, authCheckError);
+        return NextResponse.json({ 
+          success: false, 
+          message: 'Error al verificar el sistema de autenticación. Por favor, intenta nuevamente más tarde.',
+          requestId 
+        }, { status: 500 });
+      }
     }
 
     // Crear dirección en Supabase
