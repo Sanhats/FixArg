@@ -56,12 +56,12 @@ export async function POST(request) {
   } catch (error) {
     console.error(`Registration error on attempt ${attempt}:`, error);
     
-    // Mejorar el manejo de errores específicos
+    // Mejorar el manejo de errores específicos para Supabase
     const isNetworkError = 
-      error.name === 'MongoNetworkError' || 
-      error.code === 'ECONNRESET' || 
-      error.message.includes('ECONNRESET') ||
-      error.message.includes('Body is unusable');
+      error.code === 'PGRST301' || 
+      error.message?.includes('connection') || 
+      error.message?.includes('network') ||
+      error.message?.includes('Body is unusable');
 
     if (!isNetworkError && attempt === MAX_RETRIES) {
       console.error('Error no recuperable después de máximos reintentos:', error);

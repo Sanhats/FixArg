@@ -68,13 +68,18 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 })
     }
 
-    const { db } = await connectToDatabase()
-
     // Verificar si el usuario ya ha realizado una reseña para este trabajador
-    const existingReview = await db.collection('reviews').findOne({
-      workerId: new ObjectId(workerId),
-      userId: new ObjectId(decodedToken.userId)
-    })
+    const { data: existingReview, error: checkError } = await supabaseAdmin
+      .from('reviews')
+      .select('id')
+      .eq('trabajador_id', workerId)
+      .eq('usuario_id', decodedToken.userId)
+      .single()
+
+    if (checkError && checkError.code !== 'PGRST116') {
+      console.error('Error al verificar reseña existente:', checkError)
+      return NextResponse.json({ error: 'Error del servidor' }, { status: 500 })
+    }
 
     if (existingReview) {
       return NextResponse.json(
@@ -84,26 +89,26 @@ export async function POST(request) {
     }
 
     const review = {
-      workerId: new ObjectId(workerId),
-      userId: new ObjectId(decodedToken.userId),
+      trabajador_id: workerId,
+      usuario_id: decodedToken.userId,
       rating,
       comment,
-      createdAt: new Date()
+      created_at: new Date().toISOString()
     }
 
-    await db.collection('reviews').insertOne(review)
+    // Insertar la reseña en Supabase
+    const { data, error } = await supabaseAdmin
+      .from('reviews')
+      .insert([review])
+      .select()
 
-    // Actualizar el promedio de calificaciones del trabajador
-    const reviews = await db.collection('reviews')
-      .find({ workerId: new ObjectId(workerId) })
-      .toArray()
+    if (error) {
+      console.error('Error al crear reseña:', error)
+      return NextResponse.json({ error: 'Error del servidor' }, { status: 500 })
+    }
 
-    const averageRating = reviews.reduce((acc, curr) => acc + curr.rating, 0) / reviews.length
-
-    await db.collection('trabajadores').updateOne(
-      { _id: new ObjectId(workerId) },
-      { $set: { averageRating } }
-    )
+    // Actualizar el promedio de calificaciones del trabajador usando la función RPC de Supabase
+    await supabaseAdmin.rpc('update_worker_rating', { worker_id: workerId })
 
     return NextResponse.json({ message: 'Reseña creada exitosamente' })
   } catch (error) {

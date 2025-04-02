@@ -64,15 +64,13 @@ export async function POST(request) {
     let statusCode = 500
     let errorMessage = 'Error interno del servidor'
 
-    if (error.code === 'ECONNRESET') {
-      errorMessage = 'La conexión con la base de datos se interrumpió. Por favor, intente nuevamente.'
-      // Intentar reconectar para futuros requests
-      clientPromise = connectWithRetry()
-    } else if (error.name === 'MongoServerSelectionError') {
-      errorMessage = 'No se pudo conectar con la base de datos. Por favor, intente más tarde.'
-    } else if (error.code === 11000) {
+    if (error.code === '23505' || error.message?.includes('duplicate key')) {
+      // Error de duplicación en Supabase (violación de restricción única)
       statusCode = 409
       errorMessage = 'Ya existe un registro con estos datos.'
+    } else if (error.code === 'PGRST301' || error.message?.includes('connection')) {
+      // Error de conexión en Supabase
+      errorMessage = 'La conexión con la base de datos se interrumpió. Por favor, intente nuevamente.'
     }
 
     return new Response(
