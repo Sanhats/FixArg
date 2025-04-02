@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
-import { connectToDatabase } from '@/lib/mongodb'
+import supabaseAdmin from '@/lib/supabase'
 import { verifyToken } from '@/lib/auth'
-import { ObjectId } from 'mongodb'
 
 export async function DELETE(request, { params }) {
   try {
@@ -25,21 +24,22 @@ export async function DELETE(request, { params }) {
     }
 
     const { id } = params
-    const { db } = await connectToDatabase()
 
-    // Verificar que el ID sea válido
-    if (!ObjectId.isValid(id)) {
+    // Eliminar el profesional en Supabase
+    const { error, count } = await supabaseAdmin
+      .from('trabajadores')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      console.error('Error deleting professional:', error)
       return NextResponse.json(
-        { error: 'ID inválido' },
-        { status: 400 }
+        { error: 'Error al eliminar el profesional' },
+        { status: 500 }
       )
     }
 
-    const result = await db.collection('trabajadores').deleteOne({
-      _id: new ObjectId(id)
-    })
-
-    if (result.deletedCount === 0) {
+    if (count === 0) {
       return NextResponse.json(
         { error: 'Profesional no encontrado' },
         { status: 404 }
@@ -81,15 +81,6 @@ export async function PATCH(request, { params }) {
     }
 
     const { id } = params
-    const { db } = await connectToDatabase()
-
-    // Verificar que el ID sea válido
-    if (!ObjectId.isValid(id)) {
-      return NextResponse.json(
-        { error: 'ID inválido' },
-        { status: 400 }
-      )
-    }
 
     // Obtener el nuevo estado del cuerpo de la solicitud
     const { status } = await request.json()
@@ -101,12 +92,21 @@ export async function PATCH(request, { params }) {
       )
     }
 
-    const result = await db.collection('trabajadores').updateOne(
-      { _id: new ObjectId(id) },
-      { $set: { status } }
-    )
+    const { data, error, count } = await supabaseAdmin
+      .from('trabajadores')
+      .update({ status })
+      .eq('id', id)
+      .select()
 
-    if (result.matchedCount === 0) {
+    if (error) {
+      console.error('Error updating professional status:', error)
+      return NextResponse.json(
+        { error: 'Error al actualizar el estado del profesional' },
+        { status: 500 }
+      )
+    }
+
+    if (!data || data.length === 0) {
       return NextResponse.json(
         { error: 'Profesional no encontrado' },
         { status: 404 }

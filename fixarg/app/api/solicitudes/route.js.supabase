@@ -1,0 +1,143 @@
+import { NextResponse } from 'next/server';
+import supabaseAdmin, { insertSolicitud } from '@/lib/supabase';
+import { verifyToken } from '@/lib/auth';
+
+export async function POST(request) {
+  try {
+    // Verificar el token de autorización
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Token de autorización no proporcionado' }, { status: 401 });
+    }
+
+    const token = authHeader.split('Bearer ')[1];
+    const decodedToken = verifyToken(token);
+    
+    if (!decodedToken) {
+      return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    console.log('Datos recibidos en API:', body); // Para debugging
+
+    // Validar los campos requeridos y su formato
+    const requiredFields = {
+      descripcion: 'descripción',
+      fecha: 'fecha',
+      hora: 'hora',
+      trabajadorId: 'trabajadorId',
+      usuarioId: 'usuarioId'
+    };
+
+    const missingFields = [];
+    const invalidFields = [];
+
+    for (const [field, label] of Object.entries(requiredFields)) {
+      if (!body[field]) {
+        missingFields.push(label);
+        continue;
+      }
+
+      // Validación específica para IDs (ya no necesitamos validar ObjectId)
+      if ((field === 'trabajadorId' || field === 'usuarioId') && typeof body[field] !== 'string') {
+        invalidFields.push(`${label} inválido`);
+      }
+    }
+
+    if (missingFields.length > 0) {
+      console.log('Campos faltantes:', missingFields);
+      return NextResponse.json({ 
+        error: 'Faltan datos requeridos', 
+        missingFields 
+      }, { status: 400 });
+    }
+
+    if (invalidFields.length > 0) {
+      console.log('Campos inválidos:', invalidFields);
+      return NextResponse.json({ 
+        error: 'Formato inválido en algunos campos', 
+        invalidFields 
+      }, { status: 400 });
+    }
+
+    // Crear el objeto de solicitud con los campos validados para Supabase
+    const solicitudData = {
+      descripcion: body.descripcion,
+      fecha: body.fecha,
+      hora: body.hora,
+      trabajadorId: body.trabajadorId,
+      usuarioId: body.usuarioId,
+      estado: 'pendiente'
+    };
+
+    // Insertar la solicitud usando la función de Supabase
+    const result = await insertSolicitud(solicitudData);
+
+    return NextResponse.json({
+      success: true,
+      id: result.insertedId,
+      solicitud: {
+        ...solicitudData,
+        id: result.insertedId
+      }
+    });
+
+  } catch (error) {
+    console.error('Error al crear solicitud:', error);
+    return NextResponse.json({ 
+      error: 'Error al procesar la solicitud',
+      details: error.message 
+    }, { status: 500 });
+  }
+}
+
+export async function GET(request) {
+  try {
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Token de autorización no proporcionado' }, { status: 401 });
+    }
+
+    const token = authHeader.split('Bearer ')[1];
+    const decodedToken = verifyToken(token);
+    
+    if (!decodedToken) {
+      return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
+    }
+
+    // Obtener parámetros de consulta
+    const { searchParams } = new URL(request.url);
+    const usuarioId = searchParams.get('usuarioId');
+    const trabajadorId = searchParams.get('trabajadorId');
+
+    // Construir la consulta para Supabase
+    let query = supabaseAdmin.from('solicitudes').select('*');
+
+    if (usuarioId) {
+      query = query.eq('usuario_id', usuarioId);
+    }
+
+    if (trabajadorId) {
+      query = query.eq('trabajador_id', trabajadorId);
+    }
+
+    // Ejecutar la consulta
+    const { data, error } = await query;
+
+    if (error) {
+      throw error;
+    }
+
+    return NextResponse.json({
+      success: true,
+      solicitudes: data
+    });
+
+  } catch (error) {
+    console.error('Error al obtener solicitudes:', error);
+    return NextResponse.json({ 
+      error: 'Error al obtener las solicitudes',
+      details: error.message 
+    }, { status: 500 });
+  }
+}

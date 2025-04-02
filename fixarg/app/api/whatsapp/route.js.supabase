@@ -107,11 +107,11 @@ Por favor, responda "CONFIRMAR" para aceptar la solicitud o "RECHAZAR" para decl
   } catch (error) {
     console.error('Error en la ruta de WhatsApp:', error);
     return NextResponse.json(
-      {
-        success: false,
-        error: 'Error del servidor',
+      { 
+        success: false, 
+        error: 'Error del servidor al procesar la solicitud de WhatsApp',
         details: process.env.NODE_ENV === 'development' ? error.message : undefined
-      },
+      }, 
       { status: 500 }
     );
   }

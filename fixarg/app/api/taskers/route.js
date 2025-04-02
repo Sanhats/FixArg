@@ -1,46 +1,5 @@
-import { MongoClient } from 'mongodb'
 import bcrypt from 'bcryptjs'
-
-if (!process.env.MONGODB_URI) {
-  throw new Error('Please add your Mongo URI to .env.local')
-}
-
-const uri = process.env.MONGODB_URI
-const options = {
-  serverSelectionTimeoutMS: 5000,
-  socketTimeoutMS: 30000,
-  connectTimeoutMS: 10000,
-  retryWrites: true,
-  retryReads: true
-}
-
-let client
-let clientPromise
-
-async function connectWithRetry(retries = 3, delay = 1000) {
-  for (let i = 0; i < retries; i++) {
-    try {
-      if (!client) {
-        client = new MongoClient(uri, options)
-      }
-      return await client.connect()
-    } catch (error) {
-      console.error(`Intento ${i + 1} de ${retries} falló:`, error)
-      if (i === retries - 1) throw error
-      await new Promise(resolve => setTimeout(resolve, delay))
-      delay *= 2 // Backoff exponencial
-    }
-  }
-}
-
-if (process.env.NODE_ENV === 'development') {
-  if (!global._mongoClientPromise) {
-    global._mongoClientPromise = connectWithRetry()
-  }
-  clientPromise = global._mongoClientPromise
-} else {
-  clientPromise = connectWithRetry()
-}
+import supabaseAdmin, { insertTasker } from '@/lib/supabase'
 
 export async function POST(request) {
   try {
@@ -70,23 +29,22 @@ export async function POST(request) {
     // Hash the password
     const hashedPassword = await bcrypt.hash(body.password, 10)
     
-    // Connect to MongoDB
-    const client = await clientPromise
-    const db = client.db("FixArg")
-    
-    // Ensure the taskers collection exists
-    const collections = await db.listCollections({ name: 'trabajadores' }).toArray()
-    if (collections.length === 0) {
-      await db.createCollection('trabajadores')
+    // Preparar los datos para Supabase
+    const taskerData = {
+      firstName: body.firstName,
+      lastName: body.lastName,
+      email: body.email,
+      phone: body.phone,
+      occupation: body.occupation,
+      hourlyRate: body.hourlyRate,
+      description: body.description,
+      displayName: body.displayName || `${body.firstName} ${body.lastName}`,
+      password: hashedPassword,
+      status: 'pending'
     }
     
-    // Insert the new tasker document
-    const result = await db.collection('trabajadores').insertOne({
-      ...body,
-      password: hashedPassword,
-      status: 'pending',
-      createdAt: new Date(),
-    })
+    // Insertar el nuevo trabajador en Supabase
+    const result = await insertTasker(taskerData)
     
     return new Response(
       JSON.stringify({

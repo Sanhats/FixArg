@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { insertUser, findUserByEmail } from '@/lib/mongodb';
+import { insertUser, findUserByEmail } from '@/lib/supabase';
 import bcrypt from 'bcryptjs'
 export async function POST(request) {
   const MAX_RETRIES = 3;

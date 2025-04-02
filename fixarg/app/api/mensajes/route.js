@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
-import { connectToDatabase } from '@/lib/mongodb'
+import supabaseAdmin from '@/lib/supabase'
 import { verifyToken } from '@/lib/auth'
-import { ObjectId } from 'mongodb'
 
 export async function POST(request) {
   try {
@@ -15,25 +14,41 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Token inválido' }, { status: 401 })
     }
 
-    const { db } = await connectToDatabase()
     const body = await request.json()
 
-    const mensaje = {
-      contenido: body.contenido,
-      emisorId: new ObjectId(body.emisorId),
-      receptorId: new ObjectId(body.receptorId),
-      solicitudId: new ObjectId(body.solicitudId),
-      fechaCreacion: new Date()
+    // Crear el mensaje en Supabase
+    const { data, error } = await supabaseAdmin
+      .from('mensajes')
+      .insert([
+        {
+          contenido: body.contenido,
+          emisor_id: body.emisorId,
+          receptor_id: body.receptorId,
+          solicitud_id: body.solicitudId,
+          fecha_creacion: new Date().toISOString()
+        }
+      ])
+      .select()
+
+    if (error) {
+      console.error('Error al crear mensaje:', error)
+      return NextResponse.json({ error: 'Error del servidor' }, { status: 500 })
     }
 
-    const result = await db.collection('mensajes').insertOne(mensaje)
+    // Transformar la respuesta para mantener compatibilidad con el formato anterior
+    const mensaje = {
+      ...data[0],
+      _id: data[0].id,
+      emisorId: data[0].emisor_id,
+      receptorId: data[0].receptor_id,
+      solicitudId: data[0].solicitud_id,
+      fechaCreacion: data[0].fecha_creacion
+    }
+
     return NextResponse.json({ 
       success: true, 
-      id: result.insertedId,
-      mensaje: {
-        ...mensaje,
-        _id: result.insertedId
-      }
+      id: mensaje._id,
+      mensaje
     })
   } catch (error) {
     console.error('Error al crear mensaje:', error)
@@ -60,12 +75,27 @@ export async function GET(request) {
       return NextResponse.json({ error: 'ID de solicitud requerido' }, { status: 400 })
     }
 
-    const { db } = await connectToDatabase()
+    // Obtener mensajes de Supabase
+    const { data, error } = await supabaseAdmin
+      .from('mensajes')
+      .select('*')
+      .eq('solicitud_id', solicitudId)
+      .order('fecha_creacion', { ascending: true })
 
-    const mensajes = await db.collection('mensajes')
-      .find({ solicitudId: new ObjectId(solicitudId) })
-      .sort({ fechaCreacion: 1 })
-      .toArray()
+    if (error) {
+      console.error('Error al obtener mensajes:', error)
+      return NextResponse.json({ error: 'Error del servidor' }, { status: 500 })
+    }
+
+    // Transformar la respuesta para mantener compatibilidad con el formato anterior
+    const mensajes = data.map(mensaje => ({
+      ...mensaje,
+      _id: mensaje.id,
+      emisorId: mensaje.emisor_id,
+      receptorId: mensaje.receptor_id,
+      solicitudId: mensaje.solicitud_id,
+      fechaCreacion: mensaje.fecha_creacion
+    }))
 
     return NextResponse.json(mensajes)
   } catch (error) {

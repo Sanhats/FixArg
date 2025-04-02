@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { connectToDatabase } from '@/lib/mongodb'
+import supabaseAdmin from '@/lib/supabase'
 import { verifyToken } from '@/lib/auth'
 
 // Verificar que las variables de entorno estén cargadas
@@ -39,11 +39,28 @@ export async function GET(request) {
       )
     }
 
-    // Conectar a la base de datos
-    const { db } = await connectToDatabase()
+    // Obtener todos los profesionales de Supabase
+    const { data: professionals, error } = await supabaseAdmin
+      .from('trabajadores')
+      .select('*')
     
-    // Obtener todos los profesionales
-    const professionals = await db.collection('trabajadores').find({}).toArray()
+    if (error) {
+      console.error('Error fetching professionals:', error)
+      return NextResponse.json(
+        { error: 'Error al cargar los profesionales' },
+        { status: 500 }
+      )
+    }
+    
+    // Transformar la respuesta para mantener compatibilidad con el formato anterior
+    const formattedProfessionals = professionals.map(prof => ({
+      ...prof,
+      _id: prof.id,
+      firstName: prof.first_name,
+      lastName: prof.last_name,
+      hourlyRate: prof.hourly_rate,
+      displayName: prof.display_name
+    }))
 
     return NextResponse.json(professionals)
   } catch (error) {

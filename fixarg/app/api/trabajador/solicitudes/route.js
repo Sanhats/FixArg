@@ -1,27 +1,7 @@
-import { MongoClient, ObjectId } from 'mongodb'
+import { NextResponse } from 'next/server'
+import supabaseAdmin from '@/lib/supabase'
 import { headers } from 'next/headers'
 import jwt from 'jsonwebtoken'
-
-if (!process.env.MONGODB_URI) {
-  throw new Error('Please add your Mongo URI to .env.local')
-}
-
-const uri = process.env.MONGODB_URI
-const options = {}
-
-let client
-let clientPromise
-
-if (process.env.NODE_ENV === 'development') {
-  if (!global._mongoClientPromise) {
-    client = new MongoClient(uri, options)
-    global._mongoClientPromise = client.connect()
-  }
-  clientPromise = global._mongoClientPromise
-} else {
-  client = new MongoClient(uri, options)
-  clientPromise = client.connect()
-}
 
 export async function GET() {
   try {
@@ -29,9 +9,9 @@ export async function GET() {
     const token = headersList.get('authorization')?.split(' ')[1]
 
     if (!token) {
-      return new Response(
-        JSON.stringify({ error: 'Token no proporcionado' }),
-        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      return NextResponse.json(
+        { error: 'Token no proporcionado' },
+        { status: 401 }
       )
     }
 
@@ -39,71 +19,56 @@ export async function GET() {
     const decoded = jwt.verify(token, process.env.JWT_SECRET)
     const trabajadorId = decoded.userId
 
-    const client = await clientPromise
-    const db = client.db("FixArg")
+    // Obtener solicitudes de Supabase con join a usuarios
+    const { data: solicitudes, error } = await supabaseAdmin
+      .from('solicitudes')
+      .select(`
+        *,
+        usuarios:usuario_id (*)
+      `)
+      .eq('trabajador_id', trabajadorId)
+      .order('fecha_creacion', { ascending: false })
 
-    // Get all requests for this worker with populated user data
-    const solicitudes = await db.collection('solicitudes')
-      .aggregate([
-        {
-          $match: {
-            trabajadorId: new ObjectId(trabajadorId)
-          }
+    if (error) {
+      console.error('Error al obtener solicitudes:', error)
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Error al cargar las solicitudes',
+          details: error.message 
         },
-        {
-          $lookup: {
-            from: 'usuarios',
-            localField: 'usuarioId',
-            foreignField: '_id',
-            as: 'usuario'
-          }
-        },
-        {
-          $unwind: {
-            path: '$usuario',
-            preserveNullAndEmptyArrays: true
-          }
-        },
-        {
-          $sort: { createdAt: -1 }
-        }
-      ])
-      .toArray()
+        { status: 500 }
+      )
+    }
 
-    // Transform ObjectId to string for JSON serialization
+    // Transformar la respuesta para mantener compatibilidad con el formato anterior
     const serializedSolicitudes = solicitudes.map(solicitud => ({
       ...solicitud,
-      _id: solicitud._id.toString(),
-      trabajadorId: solicitud.trabajadorId.toString(),
-      usuarioId: solicitud.usuarioId?.toString(),
-      usuario: solicitud.usuario ? {
-        ...solicitud.usuario,
-        _id: solicitud.usuario._id.toString()
+      _id: solicitud.id,
+      trabajadorId: solicitud.trabajador_id,
+      usuarioId: solicitud.usuario_id,
+      fechaCreacion: solicitud.fecha_creacion,
+      usuario: solicitud.usuarios ? {
+        ...solicitud.usuarios,
+        _id: solicitud.usuarios.id,
+        firstName: solicitud.usuarios.first_name,
+        lastName: solicitud.usuarios.last_name
       } : null
     }))
 
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        solicitudes: serializedSolicitudes 
-      }),
-      { 
-        status: 200, 
-        headers: { 'Content-Type': 'application/json' } 
-      }
-    )
+    return NextResponse.json({ 
+      success: true, 
+      solicitudes: serializedSolicitudes 
+    })
   } catch (error) {
     console.error('Error al obtener solicitudes:', error)
-    return new Response(
-      JSON.stringify({ 
+    return NextResponse.json(
+      { 
         success: false, 
         error: 'Error al cargar las solicitudes',
         details: error.message 
-      }),
-      { 
-        status: 500, 
-        headers: { 'Content-Type': 'application/json' } 
-      }
+      },
+      { status: 500 }
     )
   }
 }
@@ -114,9 +79,9 @@ export async function PUT(request) {
     const token = headersList.get('authorization')?.split(' ')[1]
 
     if (!token) {
-      return new Response(
-        JSON.stringify({ error: 'Token no proporcionado' }),
-        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      return NextResponse.json(
+        { error: 'Token no proporcionado' },
+        { status: 401 }
       )
     }
 
@@ -126,26 +91,33 @@ export async function PUT(request) {
 
     const { solicitudId, estado } = await request.json()
 
-    const client = await clientPromise
-    const db = client.db("FixArg")
+    // Actualizar solicitud en Supabase
+    const { data, error } = await supabaseAdmin
+      .from('solicitudes')
+      .update({
+        estado,
+        fecha_actualizacion: new Date().toISOString()
+      })
+      .eq('id', solicitudId)
+      .eq('trabajador_id', trabajadorId)
+      .select()
 
-    const result = await db.collection('solicitudes').updateOne(
-      {
-        _id: new ObjectId(solicitudId),
-        trabajadorId: new ObjectId(trabajadorId)
-      },
-      {
-        $set: {
-          estado,
-          updatedAt: new Date()
-        }
-      }
-    )
+    if (error) {
+      console.error('Error al actualizar solicitud:', error)
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Error al actualizar la solicitud',
+          details: error.message 
+        },
+        { status: 500 }
+      )
+    }
 
-    if (result.matchedCount === 0) {
-      return new Response(
-        JSON.stringify({ error: 'Solicitud no encontrada' }),
-        { status: 404, headers: { 'Content-Type': 'application/json' } }
+    if (!data || data.length === 0) {
+      return NextResponse.json(
+        { error: 'Solicitud no encontrada' },
+        { status: 404 }
       )
     }
 

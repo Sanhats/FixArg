@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
-import { connectToDatabase } from '@/lib/mongodb'
+import supabaseAdmin from '@/lib/supabase'
 import { verifyToken } from '@/lib/auth'
-import { ObjectId } from 'mongodb'
 
 export async function POST(request) {
   try {
@@ -40,7 +39,7 @@ export async function POST(request) {
       }
 
       // Validación específica para IDs
-      if ((field === 'trabajadorId' || field === 'usuarioId') && !ObjectId.isValid(body[field])) {
+      if ((field === 'trabajadorId' || field === 'usuarioId') && !body[field].match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
         invalidFields.push(`${label} inválido`)
       }
     }
@@ -61,28 +60,43 @@ export async function POST(request) {
       }, { status: 400 })
     }
 
-    const { db } = await connectToDatabase()
+    // Crear la solicitud en Supabase
+    const { data, error } = await supabaseAdmin
+      .from('solicitudes')
+      .insert([
+        {
+          descripcion: body.descripcion,
+          fecha: body.fecha,
+          hora: body.hora,
+          trabajador_id: body.trabajadorId,
+          usuario_id: body.usuarioId,
+          estado: 'pendiente',
+          fecha_creacion: new Date().toISOString()
+        }
+      ])
+      .select()
 
-    // Crear el objeto de solicitud con los campos validados
-    const solicitud = {
-      descripcion: body.descripcion,
-      fecha: body.fecha,
-      hora: body.hora,
-      trabajadorId: new ObjectId(body.trabajadorId),
-      usuarioId: new ObjectId(body.usuarioId),
-      estado: 'pendiente',
-      fechaCreacion: new Date()
+    if (error) {
+      console.error('Error al crear solicitud en Supabase:', error)
+      return NextResponse.json({ 
+        error: 'Error al procesar la solicitud',
+        details: error.message 
+      }, { status: 500 })
     }
 
-    const result = await db.collection('solicitudes').insertOne(solicitud)
+    // Transformar la respuesta para mantener compatibilidad con el formato anterior
+    const solicitud = {
+      ...data[0],
+      _id: data[0].id,
+      trabajadorId: data[0].trabajador_id,
+      usuarioId: data[0].usuario_id,
+      fechaCreacion: data[0].fecha_creacion
+    }
 
     return NextResponse.json({
       success: true,
-      id: result.insertedId,
-      solicitud: {
-        ...solicitud,
-        _id: result.insertedId
-      }
+      id: solicitud.id,
+      solicitud
     })
 
   } catch (error) {
@@ -112,20 +126,41 @@ export async function GET(request) {
     const usuarioId = searchParams.get('usuarioId')
     const trabajadorId = searchParams.get('trabajadorId')
 
-    const { db } = await connectToDatabase()
-    let query = {}
+    let query = supabaseAdmin.from('solicitudes').select(`
+      id,
+      descripcion,
+      fecha,
+      hora,
+      trabajador_id,
+      usuario_id,
+      estado,
+      fecha_creacion
+    `)
 
     if (usuarioId) {
-      query.usuarioId = new ObjectId(usuarioId)
-    }
-    if (trabajadorId) {
-      query.trabajadorId = new ObjectId(trabajadorId)
+      query = query.eq('usuario_id', usuarioId)
+    } else if (trabajadorId) {
+      query = query.eq('trabajador_id', trabajadorId)
     }
 
-    const solicitudes = await db.collection('solicitudes')
-      .find(query)
-      .sort({ fechaCreacion: -1 })
-      .toArray()
+    const { data, error } = await query
+
+    if (error) {
+      console.error('Error al obtener solicitudes:', error)
+      return NextResponse.json({ 
+        error: 'Error al obtener las solicitudes',
+        details: error.message 
+      }, { status: 500 })
+    }
+
+    // Transformar la respuesta para mantener compatibilidad con el formato anterior
+    const solicitudes = data.map(solicitud => ({
+      ...solicitud,
+      _id: solicitud.id,
+      trabajadorId: solicitud.trabajador_id,
+      usuarioId: solicitud.usuario_id,
+      fechaCreacion: solicitud.fecha_creacion
+    }))
 
     return NextResponse.json(solicitudes)
   } catch (error) {

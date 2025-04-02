@@ -1,0 +1,97 @@
+import { NextResponse } from 'next/server';
+import supabaseAdmin, { insertMensaje } from '@/lib/supabase';
+import { verifyToken } from '@/lib/auth';
+
+export async function POST(request) {
+  try {
+    // Verificar el token de autorización
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Token de autorización no proporcionado' }, { status: 401 });
+    }
+
+    const token = authHeader.split('Bearer ')[1];
+    const decodedToken = verifyToken(token);
+    
+    if (!decodedToken) {
+      return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
+    }
+
+    const body = await request.json();
+
+    // Validar campos requeridos
+    if (!body.contenido || !body.emisorId || !body.receptorId || !body.solicitudId) {
+      return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 });
+    }
+
+    // Crear el mensaje usando la función de Supabase
+    const mensajeData = {
+      contenido: body.contenido,
+      emisorId: body.emisorId,
+      receptorId: body.receptorId,
+      solicitudId: body.solicitudId
+    };
+
+    const result = await insertMensaje(mensajeData);
+
+    return NextResponse.json({
+      success: true,
+      mensaje: result.mensaje
+    });
+
+  } catch (error) {
+    console.error('Error al crear mensaje:', error);
+    return NextResponse.json({ 
+      error: 'Error al procesar el mensaje',
+      details: error.message 
+    }, { status: 500 });
+  }
+}
+
+export async function GET(request) {
+  try {
+    // Verificar el token de autorización
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Token de autorización no proporcionado' }, { status: 401 });
+    }
+
+    const token = authHeader.split('Bearer ')[1];
+    const decodedToken = verifyToken(token);
+    
+    if (!decodedToken) {
+      return NextResponse.json({ error: 'Token inválido' }, { status: 401 });
+    }
+
+    // Obtener parámetros de consulta
+    const { searchParams } = new URL(request.url);
+    const solicitudId = searchParams.get('solicitudId');
+
+    if (!solicitudId) {
+      return NextResponse.json({ error: 'Se requiere el ID de la solicitud' }, { status: 400 });
+    }
+
+    // Obtener mensajes de la solicitud usando Supabase
+    const { data, error } = await supabaseAdmin
+      .from('mensajes')
+      .select('*')
+      .eq('solicitud_id', solicitudId)
+      .order('fecha_creacion', { ascending: true });
+
+    if (error) {
+      throw error;
+    }
+
+    return NextResponse.json({
+      success: true,
+      mensajes: data
+    });
+
+  } catch (error) {
+    console.error('Error al obtener mensajes:', error);
+    return NextResponse.json({ 
+      error: 'Error al obtener los mensajes',
+      details: error.message 
+    }, { status: 500 });
+  }
+}
