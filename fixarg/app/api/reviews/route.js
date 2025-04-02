@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
-import { connectToDatabase } from '@/lib/mongodb'
+import supabaseAdmin from '@/lib/supabase'
 import { verifyToken } from '@/lib/auth'
-import { ObjectId } from 'mongodb'
 
 // GET: Obtener reseñas de un trabajador específico
 export async function GET(request) {
@@ -13,27 +12,34 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Se requiere ID del trabajador' }, { status: 400 })
     }
 
-    const { db } = await connectToDatabase()
-    
-    const reviews = await db.collection('reviews')
-      .aggregate([
-        { $match: { workerId: new ObjectId(workerId) } },
-        { $lookup: {
-          from: 'users',
-          localField: 'userId',
-          foreignField: '_id',
-          as: 'user'
-        }},
-        { $unwind: '$user' },
-        { $project: {
-          rating: 1,
-          comment: 1,
-          createdAt: 1,
-          'user.firstName': 1,
-          'user.lastName': 1
-        }}
-      ])
-      .toArray()
+    // Obtener reseñas de Supabase con información del usuario
+    const { data, error } = await supabaseAdmin
+      .from('reviews')
+      .select(`
+        id,
+        rating,
+        comment,
+        created_at,
+        usuarios!inner(first_name, last_name)
+      `)
+      .eq('trabajador_id', workerId)
+
+    if (error) {
+      console.error('Error al obtener reseñas:', error)
+      return NextResponse.json({ error: 'Error del servidor' }, { status: 500 })
+    }
+
+    // Transformar la respuesta para mantener compatibilidad con el formato anterior
+    const reviews = data.map(review => ({
+      _id: review.id,
+      rating: review.rating,
+      comment: review.comment,
+      createdAt: review.created_at,
+      user: {
+        firstName: review.usuarios.first_name,
+        lastName: review.usuarios.last_name
+      }
+    }))
 
     return NextResponse.json(reviews)
   } catch (error) {

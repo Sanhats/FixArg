@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { connectToDatabase } from '@/lib/mongodb'
+import supabaseAdmin from '@/lib/supabase'
 import { verifyToken } from '@/lib/auth'
 
 export async function GET(request) {
@@ -14,27 +14,28 @@ export async function GET(request) {
       return NextResponse.json({ error: 'Token inválido' }, { status: 401 })
     }
 
-    const { db } = await connectToDatabase()
-    
-    const trabajadores = await db.collection('trabajadores')
-      .find({ 
-        status: 'approved' 
-      })
-      .project({
-        firstName: 1,
-        lastName: 1,
-        email: 1,
-        occupation: 1,
-        hourlyRate: 1,
-        description: 1,
-        phone: 1,
-        displayName: 1
-      })
-      .toArray()
+    // Obtener trabajadores de Supabase
+    const { data, error } = await supabaseAdmin
+      .from('trabajadores')
+      .select('*')
+      .eq('status', 'approved')
 
-    // Mapear los trabajadores para incluir el campo service basado en occupation
-    const trabajadoresMapped = trabajadores.map(t => ({
-      ...t,
+    if (error) {
+      console.error('Error al obtener trabajadores:', error)
+      return NextResponse.json({ error: 'Error del servidor' }, { status: 500 })
+    }
+
+    // Transformar la respuesta para mantener compatibilidad con el formato anterior
+    const trabajadoresMapped = data.map(t => ({
+      _id: t.id,
+      firstName: t.first_name,
+      lastName: t.last_name,
+      email: t.email,
+      occupation: t.occupation,
+      hourlyRate: t.hourly_rate,
+      description: t.description,
+      phone: t.phone,
+      displayName: t.display_name,
       service: t.occupation // Añadir service basado en occupation
     }))
 
