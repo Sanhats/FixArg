@@ -40,6 +40,7 @@ export async function GET(request) {
     }
 
     // Obtener todos los profesionales de Supabase
+    // Modificado para asegurar que se obtengan todos los profesionales independientemente del estado
     const { data: professionals, error } = await supabaseAdmin
       .from('trabajadores')
       .select('*')
@@ -53,16 +54,23 @@ export async function GET(request) {
     }
     
     // Transformar la respuesta para mantener compatibilidad con el formato anterior
+    // Asegurarse de que el campo status esté definido
     const formattedProfessionals = professionals.map(prof => ({
       ...prof,
       _id: prof.id,
       firstName: prof.first_name,
       lastName: prof.last_name,
       hourlyRate: prof.hourly_rate,
-      displayName: prof.display_name
+      displayName: prof.display_name,
+      status: prof.status || 'pending' // Asegurarse de que el estado esté definido
     }))
 
-    return NextResponse.json(professionals)
+    // Agregar logs para depuración
+    console.log('Total de profesionales:', formattedProfessionals.length)
+    console.log('Profesionales pendientes:', formattedProfessionals.filter(p => p.status === 'pending').length)
+    console.log('Profesionales aprobados:', formattedProfessionals.filter(p => p.status === 'approved').length)
+
+    return NextResponse.json(formattedProfessionals)
   } catch (error) {
     console.error('Error fetching professionals:', error)
     return NextResponse.json(

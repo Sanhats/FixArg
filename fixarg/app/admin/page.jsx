@@ -59,7 +59,16 @@ export default function AdminPanel() {
       }
 
       const data = await response.json();
-      setProfessionals(data);
+      // Transformar la respuesta para mantener compatibilidad con el formato anterior
+      const formattedProfessionals = data.map(prof => ({
+        ...prof,
+        _id: prof.id,
+        firstName: prof.first_name,
+        lastName: prof.last_name,
+        hourlyRate: prof.hourly_rate,
+        displayName: prof.display_name
+      }));
+      setProfessionals(formattedProfessionals);
     } catch (error) {
       console.error('Error:', error);
       setError('Error al cargar los profesionales');
@@ -94,6 +103,7 @@ export default function AdminPanel() {
         throw new Error('Error al actualizar el estado');
       }
 
+      // Actualizar el estado en el array local
       setProfessionals(professionals.map(p => 
         p._id === id ? { ...p, status: newStatus } : p
       ));
@@ -144,9 +154,18 @@ export default function AdminPanel() {
     );
   }
 
-  const filteredProfessionals = professionals.filter(
-    (p) => (activeTab === 'pending' && p.status === 'pending') || (activeTab === 'approved' && p.status === 'approved')
-  );
+  // Filtrar profesionales según la pestaña activa y el estado
+  const filteredProfessionals = professionals.filter(p => {
+    // Asegurarse de que el estado esté definido
+    const status = p.status || 'pending';
+    return (activeTab === 'pending' && status === 'pending') || 
+           (activeTab === 'approved' && status === 'approved');
+  });
+  
+  // Filtrar por ocupación si se ha seleccionado una
+  const occupationFilteredProfessionals = occupationFilter === 'all' 
+    ? filteredProfessionals 
+    : filteredProfessionals.filter(p => p.occupation === occupationFilter);
 
   const occupations = [
     { value: 'all', label: 'Todas las ocupaciones' },
@@ -198,13 +217,13 @@ export default function AdminPanel() {
         </Select>
       </div>
 
-      {filteredProfessionals.length === 0 ? (
+      {occupationFilteredProfessionals.length === 0 ? (
         <div className="text-center py-8 text-gray-500">
           No hay profesionales en esta lista
         </div>
       ) : (
         <div className="space-y-4">
-          {filteredProfessionals.map((professional) => (
+          {occupationFilteredProfessionals.map((professional) => (
             <Card key={professional._id} className="w-full">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <div>
