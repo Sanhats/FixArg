@@ -1,6 +1,7 @@
 -- Script para limpiar todas las tablas de la base de datos
 -- Ejecutar este script en el SQL Editor de Supabase
 
+-- IMPORTANTE: Este script ahora también limpia la tabla auth.users
 -- Desactivar temporalmente las restricciones de clave foránea
 BEGIN;
 
@@ -27,6 +28,11 @@ DELETE FROM trabajadores;
 -- Tabla usuarios
 DELETE FROM usuarios;
 
+-- Limpiar la tabla de autenticación nativa de Supabase
+-- NOTA: Esto eliminará TODOS los usuarios del sistema de autenticación
+-- Solo ejecutar en entorno de desarrollo o cuando sea absolutamente necesario
+DELETE FROM auth.users;
+
 -- Restablecer las secuencias de ID si es necesario
 -- Nota: Supabase utiliza UUID por defecto, por lo que no es necesario restablecer secuencias
 -- Si se utilizan secuencias personalizadas, descomentar las siguientes líneas
@@ -49,4 +55,6 @@ SELECT 'mensajes' as tabla, COUNT(*) as registros FROM mensajes
 UNION ALL
 SELECT 'whatsapp_messages' as tabla, COUNT(*) as registros FROM whatsapp_messages
 UNION ALL
-SELECT 'verification_codes' as tabla, COUNT(*) as registros FROM verification_codes;
+SELECT 'verification_codes' as tabla, COUNT(*) as registros FROM verification_codes
+UNION ALL
+SELECT 'auth.users' as tabla, COUNT(*) as registros FROM auth.users;

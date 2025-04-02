@@ -42,12 +42,29 @@ export async function POST(request) {
     // Verificar si el usuario ya existe en Supabase
     const existingUser = await findUserByEmail(userData.email);
     if (existingUser) {
-      console.log(`[${requestId}] Usuario ya existe:`, { id: existingUser.id });
+      console.log(`[${requestId}] Usuario ya existe en tabla usuarios:`, { id: existingUser.id });
       return NextResponse.json({ 
         success: false, 
-        message: 'El usuario ya existe',
+        message: 'El usuario ya existe en la base de datos. Si acabas de limpiar la base de datos, es posible que necesites limpiar también la tabla auth.users de Supabase.',
         requestId 
       }, { status: 400 });
+    }
+    
+    // Verificar si el usuario existe en auth.users de Supabase
+    try {
+      const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.getUserByEmail(userData.email);
+      if (authUser) {
+        console.log(`[${requestId}] Usuario ya existe en auth.users:`, { id: authUser.id });
+        return NextResponse.json({ 
+          success: false, 
+          message: 'El email ya está registrado en el sistema de autenticación. Debes limpiar la tabla auth.users de Supabase.',
+          requestId 
+        }, { status: 400 });
+      }
+    } catch (authCheckError) {
+      // Si hay un error al verificar auth.users, continuamos con el registro
+      console.log(`[${requestId}] Error al verificar auth.users:`, authCheckError);
+    }
     }
 
     // Crear dirección en Supabase
