@@ -37,14 +37,53 @@ async function procesarRespuestaTrabajador(mensaje, numeroTelefono) {
     // Actualizar el estado de la solicitud según la respuesta
     if (mensajeNormalizado === 'CONFIRMAR') {
       // Actualizar el estado de la solicitud a 'confirmada'
-      const { error: updateError } = await supabaseAdmin
+      console.log(`Actualizando estado de solicitud ${solicitudId} a 'confirmada'`);
+      const { data: updateData, error: updateError } = await supabaseAdmin
         .from('solicitudes')
         .update({ estado: 'confirmada' })
-        .eq('id', solicitudId);
+        .eq('id', solicitudId)
+        .select();
       
       if (updateError) {
         console.error('Error al actualizar solicitud:', updateError);
         return { success: false, error: 'Error al actualizar solicitud' };
+      }
+      
+      if (!updateData || updateData.length === 0) {
+        console.warn(`No se encontró la solicitud con ID ${solicitudId} para actualizar`);
+        // Intentar verificar si la solicitud existe
+        const { data: solicitudExiste, error: errorVerificacion } = await supabaseAdmin
+          .from('solicitudes')
+          .select('id, estado')
+          .eq('id', solicitudId)
+          .single();
+          
+        if (errorVerificacion) {
+          console.error('Error al verificar existencia de solicitud:', errorVerificacion);
+          return { success: false, error: 'No se pudo verificar la existencia de la solicitud' };
+        }
+        
+        if (!solicitudExiste) {
+          return { success: false, error: 'La solicitud no existe en la base de datos' };
+        }
+        
+        console.log('Estado actual de la solicitud:', solicitudExiste.estado);
+        if (solicitudExiste.estado === 'confirmada') {
+          console.log('La solicitud ya estaba confirmada');
+        } else {
+          // Intentar actualizar nuevamente
+          const { error: retryError } = await supabaseAdmin
+            .from('solicitudes')
+            .update({ estado: 'confirmada' })
+            .eq('id', solicitudId);
+            
+          if (retryError) {
+            console.error('Error en segundo intento de actualización:', retryError);
+            return { success: false, error: 'Error persistente al actualizar solicitud' };
+          }
+        }
+      } else {
+        console.log('Solicitud actualizada correctamente:', updateData);
       }
       
       // Registrar la respuesta en la tabla de mensajes
@@ -99,14 +138,53 @@ async function procesarRespuestaTrabajador(mensaje, numeroTelefono) {
       return { success: true, message: 'Solicitud confirmada y cliente notificado' };
     } else if (mensajeNormalizado === 'RECHAZAR') {
       // Actualizar el estado de la solicitud a 'rechazada'
-      const { error: updateError } = await supabaseAdmin
+      console.log(`Actualizando estado de solicitud ${solicitudId} a 'rechazada'`);
+      const { data: updateData, error: updateError } = await supabaseAdmin
         .from('solicitudes')
         .update({ estado: 'rechazada' })
-        .eq('id', solicitudId);
+        .eq('id', solicitudId)
+        .select();
       
       if (updateError) {
         console.error('Error al actualizar solicitud:', updateError);
         return { success: false, error: 'Error al actualizar solicitud' };
+      }
+      
+      if (!updateData || updateData.length === 0) {
+        console.warn(`No se encontró la solicitud con ID ${solicitudId} para actualizar`);
+        // Intentar verificar si la solicitud existe
+        const { data: solicitudExiste, error: errorVerificacion } = await supabaseAdmin
+          .from('solicitudes')
+          .select('id, estado')
+          .eq('id', solicitudId)
+          .single();
+          
+        if (errorVerificacion) {
+          console.error('Error al verificar existencia de solicitud:', errorVerificacion);
+          return { success: false, error: 'No se pudo verificar la existencia de la solicitud' };
+        }
+        
+        if (!solicitudExiste) {
+          return { success: false, error: 'La solicitud no existe en la base de datos' };
+        }
+        
+        console.log('Estado actual de la solicitud:', solicitudExiste.estado);
+        if (solicitudExiste.estado === 'rechazada') {
+          console.log('La solicitud ya estaba rechazada');
+        } else {
+          // Intentar actualizar nuevamente
+          const { error: retryError } = await supabaseAdmin
+            .from('solicitudes')
+            .update({ estado: 'rechazada' })
+            .eq('id', solicitudId);
+            
+          if (retryError) {
+            console.error('Error en segundo intento de actualización:', retryError);
+            return { success: false, error: 'Error persistente al actualizar solicitud' };
+          }
+        }
+      } else {
+        console.log('Solicitud actualizada correctamente:', updateData);
       }
       
       // Registrar la respuesta en la tabla de mensajes
@@ -161,14 +239,53 @@ async function procesarRespuestaTrabajador(mensaje, numeroTelefono) {
       return { success: true, message: 'Solicitud rechazada y cliente notificado' };
     } else if (mensajeNormalizado === 'LLEGUE') {
       // Actualizar el estado de la solicitud a 'en_progreso'
-      const { error: updateError } = await supabaseAdmin
+      console.log(`Actualizando estado de solicitud ${solicitudId} a 'en_progreso'`);
+      const { data: updateData, error: updateError } = await supabaseAdmin
         .from('solicitudes')
         .update({ estado: 'en_progreso' })
-        .eq('id', solicitudId);
+        .eq('id', solicitudId)
+        .select();
       
       if (updateError) {
         console.error('Error al actualizar solicitud:', updateError);
         return { success: false, error: 'Error al actualizar solicitud' };
+      }
+      
+      if (!updateData || updateData.length === 0) {
+        console.warn(`No se encontró la solicitud con ID ${solicitudId} para actualizar`);
+        // Intentar verificar si la solicitud existe
+        const { data: solicitudExiste, error: errorVerificacion } = await supabaseAdmin
+          .from('solicitudes')
+          .select('id, estado')
+          .eq('id', solicitudId)
+          .single();
+          
+        if (errorVerificacion) {
+          console.error('Error al verificar existencia de solicitud:', errorVerificacion);
+          return { success: false, error: 'No se pudo verificar la existencia de la solicitud' };
+        }
+        
+        if (!solicitudExiste) {
+          return { success: false, error: 'La solicitud no existe en la base de datos' };
+        }
+        
+        console.log('Estado actual de la solicitud:', solicitudExiste.estado);
+        if (solicitudExiste.estado === 'en_progreso') {
+          console.log('La solicitud ya estaba en progreso');
+        } else {
+          // Intentar actualizar nuevamente
+          const { error: retryError } = await supabaseAdmin
+            .from('solicitudes')
+            .update({ estado: 'en_progreso' })
+            .eq('id', solicitudId);
+            
+          if (retryError) {
+            console.error('Error en segundo intento de actualización:', retryError);
+            return { success: false, error: 'Error persistente al actualizar solicitud' };
+          }
+        }
+      } else {
+        console.log('Solicitud actualizada correctamente:', updateData);
       }
       
       // Registrar la respuesta en la tabla de mensajes
@@ -223,14 +340,53 @@ async function procesarRespuestaTrabajador(mensaje, numeroTelefono) {
       return { success: true, message: 'Estado actualizado y cliente notificado' };
     } else if (mensajeNormalizado === 'FINALIZADO') {
       // Actualizar el estado de la solicitud a 'completada'
-      const { error: updateError } = await supabaseAdmin
+      console.log(`Actualizando estado de solicitud ${solicitudId} a 'completada'`);
+      const { data: updateData, error: updateError } = await supabaseAdmin
         .from('solicitudes')
         .update({ estado: 'completada' })
-        .eq('id', solicitudId);
+        .eq('id', solicitudId)
+        .select();
       
       if (updateError) {
         console.error('Error al actualizar solicitud:', updateError);
         return { success: false, error: 'Error al actualizar solicitud' };
+      }
+      
+      if (!updateData || updateData.length === 0) {
+        console.warn(`No se encontró la solicitud con ID ${solicitudId} para actualizar`);
+        // Intentar verificar si la solicitud existe
+        const { data: solicitudExiste, error: errorVerificacion } = await supabaseAdmin
+          .from('solicitudes')
+          .select('id, estado')
+          .eq('id', solicitudId)
+          .single();
+          
+        if (errorVerificacion) {
+          console.error('Error al verificar existencia de solicitud:', errorVerificacion);
+          return { success: false, error: 'No se pudo verificar la existencia de la solicitud' };
+        }
+        
+        if (!solicitudExiste) {
+          return { success: false, error: 'La solicitud no existe en la base de datos' };
+        }
+        
+        console.log('Estado actual de la solicitud:', solicitudExiste.estado);
+        if (solicitudExiste.estado === 'completada') {
+          console.log('La solicitud ya estaba completada');
+        } else {
+          // Intentar actualizar nuevamente
+          const { error: retryError } = await supabaseAdmin
+            .from('solicitudes')
+            .update({ estado: 'completada' })
+            .eq('id', solicitudId);
+            
+          if (retryError) {
+            console.error('Error en segundo intento de actualización:', retryError);
+            return { success: false, error: 'Error persistente al actualizar solicitud' };
+          }
+        }
+      } else {
+        console.log('Solicitud actualizada correctamente:', updateData);
       }
       
       // Registrar la respuesta en la tabla de mensajes
@@ -329,8 +485,12 @@ async function procesarRespuestaTrabajador(mensaje, numeroTelefono) {
 // Endpoint para recibir webhooks de Twilio
 export async function POST(request) {
   try {
+    console.log('=== INICIO PROCESAMIENTO WEBHOOK TWILIO ===');
+    console.log('Timestamp:', new Date().toISOString());
+    
     // Verificar que la solicitud sea válida
     if (!request.body) {
+      console.error('Error: Solicitud sin cuerpo');
       return NextResponse.json({ success: false, error: 'Solicitud inválida' }, { status: 400 });
     }
     
@@ -340,31 +500,46 @@ export async function POST(request) {
     const formData = await request.formData();
     
     // Log de todos los campos recibidos para depuración
-    console.log('Todos los campos del webhook:');
+    console.log('=== CAMPOS DEL WEBHOOK ===');
+    const camposWebhook = {};
     for (const [key, value] of formData.entries()) {
       console.log(`${key}: ${value}`);
+      camposWebhook[key] = value;
     }
+    console.log('Resumen de campos:', JSON.stringify(camposWebhook));
     
     // Extraer los datos relevantes
     const mensaje = formData.get('Body');
     const numeroTelefono = formData.get('From')?.replace('whatsapp:', '');
+    const messageSid = formData.get('MessageSid') || 'No disponible';
     
     // Validar que tengamos los datos necesarios
     if (!mensaje || !numeroTelefono) {
-      console.error('Datos incompletos en webhook:', { mensaje, numeroTelefono });
+      console.error('Datos incompletos en webhook:', { mensaje, numeroTelefono, messageSid });
       return NextResponse.json({ success: false, error: 'Datos incompletos' }, { status: 400 });
     }
     
-    console.log('Webhook recibido:', { mensaje, numeroTelefono });
+    console.log('=== DATOS PROCESADOS ===');
+    console.log('Webhook recibido:', { mensaje, numeroTelefono, messageSid });
     
     // Procesar la respuesta del trabajador
+    console.log('Iniciando procesamiento de respuesta del trabajador...');
     const resultado = await procesarRespuestaTrabajador(mensaje, numeroTelefono);
     
     // Registrar el resultado para depuración
-    console.log('Resultado del procesamiento:', resultado);
+    console.log('=== RESULTADO DEL PROCESAMIENTO ===');
+    console.log('Resultado:', JSON.stringify(resultado));
+    
+    // Verificar si se actualizó correctamente el estado
+    if (resultado.success) {
+      console.log('✅ Procesamiento exitoso:', resultado.message);
+    } else {
+      console.error('❌ Error en procesamiento:', resultado.error);
+    }
     
     // Responder a Twilio con un TwiML vacío (no es necesario enviar una respuesta inmediata)
-    return new NextResponse(
+    console.log('=== ENVIANDO RESPUESTA A TWILIO ===');
+    const response = new NextResponse(
       '<?xml version="1.0" encoding="UTF-8"?><Response></Response>',
       {
         status: 200,
@@ -373,8 +548,25 @@ export async function POST(request) {
         }
       }
     );
+    
+    console.log('=== FIN PROCESAMIENTO WEBHOOK TWILIO ===');
+    return response;
   } catch (error) {
-    console.error('Error en webhook de WhatsApp:', error);
+    console.error('=== ERROR EN WEBHOOK DE WHATSAPP ===');
+    console.error('Error:', error);
+    console.error('Stack:', error.stack);
+    
+    // Registrar información adicional para depuración
+    try {
+      console.error('Detalles de la solicitud:', {
+        url: request.url,
+        method: request.method,
+        headers: Object.fromEntries(request.headers.entries())
+      });
+    } catch (logError) {
+      console.error('Error al registrar detalles de la solicitud:', logError);
+    }
+    
     return NextResponse.json(
       {
         success: false,
