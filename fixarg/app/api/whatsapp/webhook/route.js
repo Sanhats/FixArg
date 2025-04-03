@@ -12,6 +12,7 @@ async function procesarRespuestaTrabajador(mensaje, numeroTelefono) {
     console.log('Buscando mensajes para el número:', numeroTelefono);
     
     // Intentar buscar con el número exacto primero
+    console.log('Buscando mensajes para el número exacto:', numeroTelefono);
     let { data: mensajes, error: mensajesError } = await supabaseAdmin
       .from('whatsapp_messages')
       .select('*')
@@ -19,22 +20,49 @@ async function procesarRespuestaTrabajador(mensaje, numeroTelefono) {
       .order('created_at', { ascending: false })
       .limit(1);
     
-    // Si no se encuentra, intentar buscar sin el prefijo de WhatsApp
+    // Si no se encuentra, intentar buscar con variantes del número
     if (!mensajes || mensajes.length === 0) {
       console.log('No se encontraron mensajes con el número exacto, intentando búsqueda alternativa');
       
-      // Intentar buscar con variantes del número
+      // Crear variantes del número para búsqueda
+      const variantesNumero = [];
+      
+      // Variante 1: Si comienza con +549, probar con +54
       if (numeroTelefono.startsWith('+549')) {
-        // Intentar con formato +54 (sin el 9 para móviles)
-        const numeroAlternativo = '+54' + numeroTelefono.substring(4);
-        console.log('Intentando con número alternativo:', numeroAlternativo);
+        const numeroSin9 = '+54' + numeroTelefono.substring(4);
+        variantesNumero.push(numeroSin9);
+        console.log('Añadiendo variante sin 9:', numeroSin9);
+      }
+      
+      // Variante 2: Si comienza con +54 (sin 9), probar con +549
+      if (numeroTelefono.startsWith('+54') && !numeroTelefono.startsWith('+549')) {
+        const numeroCon9 = '+549' + numeroTelefono.substring(3);
+        variantesNumero.push(numeroCon9);
+        console.log('Añadiendo variante con 9:', numeroCon9);
+      }
+      
+      // Variante 3: Si no tiene prefijo internacional, probar con +54 y +549
+      if (!numeroTelefono.startsWith('+')) {
+        variantesNumero.push('+54' + numeroTelefono);
+        variantesNumero.push('+549' + numeroTelefono);
+        console.log('Añadiendo variantes con prefijo internacional');
+      }
+      
+      // Buscar con cada variante hasta encontrar mensajes
+      for (const variante of variantesNumero) {
+        console.log('Intentando con número alternativo:', variante);
         
         ({ data: mensajes, error: mensajesError } = await supabaseAdmin
           .from('whatsapp_messages')
           .select('*')
-          .eq('phone_number', numeroAlternativo)
+          .eq('phone_number', variante)
           .order('created_at', { ascending: false })
           .limit(1));
+        
+        if (mensajes && mensajes.length > 0) {
+          console.log('Mensajes encontrados con la variante:', variante);
+          break;
+        }
       }
     }
     
@@ -113,14 +141,17 @@ async function procesarRespuestaTrabajador(mensaje, numeroTelefono) {
       } else {
         // Actualizar el estado de la solicitud a 'confirmada'
         console.log(`Ejecutando actualización de solicitud ${solicitudId} a estado 'confirmada'`);
-        const { data: updateData, error: updateError } = await supabaseAdmin
-          .from('solicitudes')
-          .update({ 
-            estado: 'confirmada',
-            updated_at: new Date().toISOString() // Añadir timestamp de actualización
-          })
-          .eq('id', solicitudId)
-          .select();
+        
+        try {
+          // Primero intentar con update y select
+          const { data: updateData, error: updateError } = await supabaseAdmin
+            .from('solicitudes')
+            .update({ 
+              estado: 'confirmada',
+              fecha_actualizacion: new Date().toISOString() // Usar el campo correcto según el esquema
+            })
+            .eq('id', solicitudId)
+            .select();
         
         console.log('Resultado de actualización:', { 
           exitoso: !!updateData && updateData.length > 0, 
@@ -128,46 +159,93 @@ async function procesarRespuestaTrabajador(mensaje, numeroTelefono) {
           datos: updateData ? JSON.stringify(updateData) : 'ninguno'
         });
       
-      if (updateError) {
-        console.error('Error al actualizar solicitud:', updateError);
-        return { success: false, error: 'Error al actualizar solicitud' };
-      }
-      
-      if (!updateData || updateData.length === 0) {
-        console.warn(`No se encontró la solicitud con ID ${solicitudId} para actualizar`);
-        // Intentar verificar si la solicitud existe
-        const { data: solicitudExiste, error: errorVerificacion } = await supabaseAdmin
-          .from('solicitudes')
-          .select('id, estado')
-          .eq('id', solicitudId)
-          .single();
+          if (updateError) {
+            console.error('Error al actualizar solicitud (primer intento):', updateError);
+            throw new Error(`Error en primer intento: ${updateError.message}`);
+          }
           
-        if (errorVerificacion) {
-          console.error('Error al verificar existencia de solicitud:', errorVerificacion);
-          return { success: false, error: 'No se pudo verificar la existencia de la solicitud' };
-        }
-        
-        if (!solicitudExiste) {
-          return { success: false, error: 'La solicitud no existe en la base de datos' };
-        }
-        
-        console.log('Estado actual de la solicitud:', solicitudExiste.estado);
-        if (solicitudExiste.estado === 'confirmada') {
-          console.log('La solicitud ya estaba confirmada');
-        } else {
-          // Intentar actualizar nuevamente
-          const { error: retryError } = await supabaseAdmin
-            .from('solicitudes')
-            .update({ estado: 'confirmada' })
-            .eq('id', solicitudId);
+          if (!updateData || updateData.length === 0) {
+            console.warn(`No se encontró la solicitud con ID ${solicitudId} para actualizar en primer intento`);
+            // Intentar verificar si la solicitud existe
+            const { data: solicitudExiste, error: errorVerificacion } = await supabaseAdmin
+              .from('solicitudes')
+              .select('id, estado')
+              .eq('id', solicitudId)
+              .single();
+              
+            if (errorVerificacion) {
+              console.error('Error al verificar existencia de solicitud:', errorVerificacion);
+              throw new Error(`Error al verificar existencia: ${errorVerificacion.message}`);
+            }
             
-          if (retryError) {
-            console.error('Error en segundo intento de actualización:', retryError);
-            return { success: false, error: 'Error persistente al actualizar solicitud' };
+            if (!solicitudExiste) {
+              throw new Error(`La solicitud con ID ${solicitudId} no existe en la base de datos`);
+            }
+            
+            console.log('Estado actual de la solicitud:', solicitudExiste.estado);
+            if (solicitudExiste.estado === 'confirmada') {
+              console.log('La solicitud ya estaba confirmada');
+            } else {
+              // Intentar actualizar nuevamente con un método alternativo
+              console.log('Intentando actualización alternativa sin select');
+              const { error: retryError } = await supabaseAdmin
+                .from('solicitudes')
+                .update({ 
+                  estado: 'confirmada',
+                  fecha_actualizacion: new Date().toISOString()
+                })
+                .eq('id', solicitudId);
+                
+              if (retryError) {
+                console.error('Error en segundo intento de actualización:', retryError);
+                throw new Error(`Error en segundo intento: ${retryError.message}`);
+              }
+              
+              // Verificar que la actualización fue exitosa
+              const { data: verificacionFinal, error: errorFinal } = await supabaseAdmin
+                .from('solicitudes')
+                .select('estado')
+                .eq('id', solicitudId)
+                .single();
+                
+              if (errorFinal) {
+                console.error('Error al verificar actualización final:', errorFinal);
+              } else {
+                console.log('Estado final verificado:', verificacionFinal.estado);
+              }
+            }
+          } else {
+            console.log('Solicitud actualizada correctamente en primer intento:', updateData);
+          }
+        } catch (error) {
+          console.error('Error durante el proceso de actualización:', error);
+          
+          // Último intento con método directo
+          console.log('Realizando intento final de actualización con método directo');
+          try {
+            const { error: finalError } = await supabaseAdmin
+              .from('solicitudes')
+              .update({ estado: 'confirmada' })
+              .eq('id', solicitudId);
+              
+            if (finalError) {
+              console.error('Error en intento final de actualización:', finalError);
+              return { success: false, error: 'No se pudo actualizar la solicitud después de múltiples intentos' };
+            }
+            
+            // Verificar estado final
+            const { data: estadoFinal } = await supabaseAdmin
+              .from('solicitudes')
+              .select('estado')
+              .eq('id', solicitudId)
+              .single();
+              
+            console.log('Estado final después de todos los intentos:', estadoFinal?.estado);
+          } catch (finalCatchError) {
+            console.error('Error catastrófico en actualización:', finalCatchError);
+            return { success: false, error: 'Error crítico al actualizar la solicitud' };
           }
         }
-      } else {
-        console.log('Solicitud actualizada correctamente:', updateData);
       }
       }
       
@@ -230,13 +308,13 @@ async function procesarRespuestaTrabajador(mensaje, numeroTelefono) {
         .eq('id', solicitudId)
         .select();
       
-      if (updateError) {
-        console.error('Error al actualizar solicitud:', updateError);
-        return { success: false, error: 'Error al actualizar solicitud' };
-      }
-      
-      if (!updateData || updateData.length === 0) {
-        console.warn(`No se encontró la solicitud con ID ${solicitudId} para actualizar`);
+          if (updateError) {
+            console.error('Error al actualizar solicitud (primer intento):', updateError);
+            throw new Error(`Error en primer intento: ${updateError.message}`);
+          }
+          
+          if (!updateData || updateData.length === 0) {
+            console.warn(`No se encontró la solicitud con ID ${solicitudId} para actualizar en primer intento`);
         // Intentar verificar si la solicitud existe
         const { data: solicitudExiste, error: errorVerificacion } = await supabaseAdmin
           .from('solicitudes')
@@ -268,8 +346,38 @@ async function procesarRespuestaTrabajador(mensaje, numeroTelefono) {
             return { success: false, error: 'Error persistente al actualizar solicitud' };
           }
         }
-      } else {
-        console.log('Solicitud actualizada correctamente:', updateData);
+          } else {
+            console.log('Solicitud actualizada correctamente en primer intento:', updateData);
+          }
+        } catch (error) {
+          console.error('Error durante el proceso de actualización:', error);
+          
+          // Último intento con método directo
+          console.log('Realizando intento final de actualización con método directo');
+          try {
+            const { error: finalError } = await supabaseAdmin
+              .from('solicitudes')
+              .update({ estado: 'confirmada' })
+              .eq('id', solicitudId);
+              
+            if (finalError) {
+              console.error('Error en intento final de actualización:', finalError);
+              return { success: false, error: 'No se pudo actualizar la solicitud después de múltiples intentos' };
+            }
+            
+            // Verificar estado final
+            const { data: estadoFinal } = await supabaseAdmin
+              .from('solicitudes')
+              .select('estado')
+              .eq('id', solicitudId)
+              .single();
+              
+            console.log('Estado final después de todos los intentos:', estadoFinal?.estado);
+          } catch (finalCatchError) {
+            console.error('Error catastrófico en actualización:', finalCatchError);
+            return { success: false, error: 'Error crítico al actualizar la solicitud' };
+          }
+        }
       }
       
       // Registrar la respuesta en la tabla de mensajes
@@ -331,13 +439,13 @@ async function procesarRespuestaTrabajador(mensaje, numeroTelefono) {
         .eq('id', solicitudId)
         .select();
       
-      if (updateError) {
-        console.error('Error al actualizar solicitud:', updateError);
-        return { success: false, error: 'Error al actualizar solicitud' };
-      }
-      
-      if (!updateData || updateData.length === 0) {
-        console.warn(`No se encontró la solicitud con ID ${solicitudId} para actualizar`);
+          if (updateError) {
+            console.error('Error al actualizar solicitud (primer intento):', updateError);
+            throw new Error(`Error en primer intento: ${updateError.message}`);
+          }
+          
+          if (!updateData || updateData.length === 0) {
+            console.warn(`No se encontró la solicitud con ID ${solicitudId} para actualizar en primer intento`);
         // Intentar verificar si la solicitud existe
         const { data: solicitudExiste, error: errorVerificacion } = await supabaseAdmin
           .from('solicitudes')
@@ -369,8 +477,38 @@ async function procesarRespuestaTrabajador(mensaje, numeroTelefono) {
             return { success: false, error: 'Error persistente al actualizar solicitud' };
           }
         }
-      } else {
-        console.log('Solicitud actualizada correctamente:', updateData);
+          } else {
+            console.log('Solicitud actualizada correctamente en primer intento:', updateData);
+          }
+        } catch (error) {
+          console.error('Error durante el proceso de actualización:', error);
+          
+          // Último intento con método directo
+          console.log('Realizando intento final de actualización con método directo');
+          try {
+            const { error: finalError } = await supabaseAdmin
+              .from('solicitudes')
+              .update({ estado: 'confirmada' })
+              .eq('id', solicitudId);
+              
+            if (finalError) {
+              console.error('Error en intento final de actualización:', finalError);
+              return { success: false, error: 'No se pudo actualizar la solicitud después de múltiples intentos' };
+            }
+            
+            // Verificar estado final
+            const { data: estadoFinal } = await supabaseAdmin
+              .from('solicitudes')
+              .select('estado')
+              .eq('id', solicitudId)
+              .single();
+              
+            console.log('Estado final después de todos los intentos:', estadoFinal?.estado);
+          } catch (finalCatchError) {
+            console.error('Error catastrófico en actualización:', finalCatchError);
+            return { success: false, error: 'Error crítico al actualizar la solicitud' };
+          }
+        }
       }
       
       // Registrar la respuesta en la tabla de mensajes
@@ -432,13 +570,13 @@ async function procesarRespuestaTrabajador(mensaje, numeroTelefono) {
         .eq('id', solicitudId)
         .select();
       
-      if (updateError) {
-        console.error('Error al actualizar solicitud:', updateError);
-        return { success: false, error: 'Error al actualizar solicitud' };
-      }
-      
-      if (!updateData || updateData.length === 0) {
-        console.warn(`No se encontró la solicitud con ID ${solicitudId} para actualizar`);
+          if (updateError) {
+            console.error('Error al actualizar solicitud (primer intento):', updateError);
+            throw new Error(`Error en primer intento: ${updateError.message}`);
+          }
+          
+          if (!updateData || updateData.length === 0) {
+            console.warn(`No se encontró la solicitud con ID ${solicitudId} para actualizar en primer intento`);
         // Intentar verificar si la solicitud existe
         const { data: solicitudExiste, error: errorVerificacion } = await supabaseAdmin
           .from('solicitudes')
@@ -470,8 +608,38 @@ async function procesarRespuestaTrabajador(mensaje, numeroTelefono) {
             return { success: false, error: 'Error persistente al actualizar solicitud' };
           }
         }
-      } else {
-        console.log('Solicitud actualizada correctamente:', updateData);
+          } else {
+            console.log('Solicitud actualizada correctamente en primer intento:', updateData);
+          }
+        } catch (error) {
+          console.error('Error durante el proceso de actualización:', error);
+          
+          // Último intento con método directo
+          console.log('Realizando intento final de actualización con método directo');
+          try {
+            const { error: finalError } = await supabaseAdmin
+              .from('solicitudes')
+              .update({ estado: 'confirmada' })
+              .eq('id', solicitudId);
+              
+            if (finalError) {
+              console.error('Error en intento final de actualización:', finalError);
+              return { success: false, error: 'No se pudo actualizar la solicitud después de múltiples intentos' };
+            }
+            
+            // Verificar estado final
+            const { data: estadoFinal } = await supabaseAdmin
+              .from('solicitudes')
+              .select('estado')
+              .eq('id', solicitudId)
+              .single();
+              
+            console.log('Estado final después de todos los intentos:', estadoFinal?.estado);
+          } catch (finalCatchError) {
+            console.error('Error catastrófico en actualización:', finalCatchError);
+            return { success: false, error: 'Error crítico al actualizar la solicitud' };
+          }
+        }
       }
       
       // Registrar la respuesta en la tabla de mensajes
