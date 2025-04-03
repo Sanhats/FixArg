@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import supabaseAdmin, { insertMensaje } from '@/lib/supabase';
+import supabaseAdmin from '@/lib/supabase';
 import { sendWhatsAppMessage } from '@/lib/twilio';
 
 export async function POST(request) {
@@ -9,66 +9,108 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: 'Solicitud inválida' }, { status: 400 });
     }
     
-    const { phoneNumber, message, trabajadorId, solicitudId, clienteNombre, clienteTelefono, fecha, hora } = await request.json();
-
-    // Validar que todos los campos requeridos estén presentes y tengan el formato correcto
+    const data = await request.json();
+    const { phoneNumber, message } = data;
+    
+    // Validación básica para todos los tipos de mensajes
     if (!phoneNumber || typeof phoneNumber !== 'string') {
       return NextResponse.json({ success: false, error: 'Número de teléfono inválido' }, { status: 400 });
     }
     if (!message || typeof message !== 'string' || message.trim().length === 0) {
-      return NextResponse.json({ success: false, error: 'Descripción del trabajo requerida' }, { status: 400 });
-    }
-    if (!trabajadorId || typeof trabajadorId !== 'string') {
-      return NextResponse.json({ success: false, error: 'ID del trabajador inválido' }, { status: 400 });
-    }
-    if (!solicitudId || typeof solicitudId !== 'string') {
-      return NextResponse.json({ success: false, error: 'ID de solicitud inválido' }, { status: 400 });
-    }
-    if (!clienteNombre || typeof clienteNombre !== 'string' || clienteNombre.trim().length === 0) {
-      return NextResponse.json({ success: false, error: 'Nombre del cliente requerido' }, { status: 400 });
-    }
-    if (!clienteTelefono || typeof clienteTelefono !== 'string') {
-      return NextResponse.json({ success: false, error: 'Teléfono del cliente inválido' }, { status: 400 });
-    }
-    if (!fecha || !hora) {
-      return NextResponse.json({ success: false, error: 'Fecha y hora requeridas' }, { status: 400 });
+      return NextResponse.json({ success: false, error: 'Mensaje requerido' }, { status: 400 });
     }
     
-    // Formatear el mensaje con los datos del cliente y la solicitud
-    // Formatear el mensaje con un diseño más claro y profesional
-    const mensajeFormateado = `🔔 *NUEVA SOLICITUD DE SERVICIO*
+    // Determinar el tipo de mensaje a enviar
+    let mensajeFormateado = message;
+    let metadatos = {};
+    
+    // Si es una solicitud de trabajo (tiene todos los campos adicionales)
+    if (data.trabajadorId && data.solicitudId && data.clienteNombre && data.clienteTelefono && data.fecha && data.hora) {
+      // Validar campos específicos para solicitudes de trabajo
+      if (typeof data.trabajadorId !== 'string') {
+        return NextResponse.json({ success: false, error: 'ID del trabajador inválido' }, { status: 400 });
+      }
+      if (typeof data.solicitudId !== 'string') {
+        return NextResponse.json({ success: false, error: 'ID de solicitud inválido' }, { status: 400 });
+      }
+      if (typeof data.clienteNombre !== 'string' || data.clienteNombre.trim().length === 0) {
+        return NextResponse.json({ success: false, error: 'Nombre del cliente requerido' }, { status: 400 });
+      }
+      if (typeof data.clienteTelefono !== 'string') {
+        return NextResponse.json({ success: false, error: 'Teléfono del cliente inválido' }, { status: 400 });
+      }
+      
+      // Formatear el mensaje con un diseño más claro y profesional para solicitudes
+      mensajeFormateado = `🔔 *NUEVA SOLICITUD DE SERVICIO*
 
 👤 *Datos del Cliente:*
-• Nombre: ${clienteNombre}
-• Teléfono: ${clienteTelefono}
+• Nombre: ${data.clienteNombre}
+• Teléfono: ${data.clienteTelefono}
 
 📝 *Detalles del Trabajo:*
 ${message}
 
 📅 *Fecha y Hora Solicitada:*
-• Fecha: ${fecha}
-• Hora: ${hora}
+• Fecha: ${data.fecha}
+• Hora: ${data.hora}
 
 ⚠️ *Importante:*
 Por favor, responda "CONFIRMAR" para aceptar la solicitud o "RECHAZAR" para declinarla.
 
-¡Gracias por usar FixArg!`
+¡Gracias por usar FixArg!`;
+      
+      // Guardar metadatos para la base de datos
+      metadatos = {
+        trabajador_id: data.trabajadorId,
+        solicitud_id: data.solicitudId,
+        cliente_nombre: data.clienteNombre,
+        cliente_telefono: data.clienteTelefono
+      };
+    } else if (data.tipo === 'recordatorio_llegada' && data.solicitudId && data.trabajadorId) {
+      // Mensaje de recordatorio de llegada
+      mensajeFormateado = `🔔 *RECORDATORIO DE SERVICIO*
+
+Tiene un servicio programado para hoy a las ${data.hora}.
+
+Cuando llegue al lugar, por favor responda "LLEGUE" para notificar al cliente.
+
+¡Gracias por usar FixArg!`;
+      
+      metadatos = {
+        trabajador_id: data.trabajadorId,
+        solicitud_id: data.solicitudId,
+        tipo: 'recordatorio_llegada'
+      };
+    } else if (data.tipo === 'recordatorio_finalizacion' && data.solicitudId && data.trabajadorId) {
+      // Mensaje de recordatorio de finalización
+      mensajeFormateado = `🔔 *SERVICIO EN PROGRESO*
+
+Cuando finalice el trabajo, por favor responda "FINALIZADO" para notificar al cliente y permitirle calificar su servicio.
+
+¡Gracias por usar FixArg!`;
+      
+      metadatos = {
+        trabajador_id: data.trabajadorId,
+        solicitud_id: data.solicitudId,
+        tipo: 'recordatorio_finalizacion'
+      };
+    }
+    // Si no es ninguno de los tipos anteriores, se envía el mensaje tal cual
 
     // Registrar el mensaje en la base de datos de Supabase
     try {
+      // Preparar los datos para insertar en la base de datos
+      const mensajeData = {
+        phone_number: phoneNumber,
+        message: mensajeFormateado,
+        status: 'sent',
+        created_at: new Date().toISOString(),
+        ...metadatos // Agregar los metadatos específicos del tipo de mensaje
+      };
+      
       const { data, error } = await supabaseAdmin
         .from('whatsapp_messages')
-        .insert([
-          {
-            phone_number: phoneNumber,
-            message: mensajeFormateado,
-            trabajador_id: trabajadorId,
-            solicitud_id: solicitudId,
-            cliente_nombre: clienteNombre,
-            cliente_telefono: clienteTelefono,
-            created_at: new Date().toISOString()
-          }
-        ])
+        .insert([mensajeData])
         .select();
 
       if (error) {
