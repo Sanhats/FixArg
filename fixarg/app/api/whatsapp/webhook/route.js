@@ -9,12 +9,15 @@ async function procesarRespuestaTrabajador(mensaje, numeroTelefono) {
     const mensajeNormalizado = mensaje.trim().toUpperCase();
     
     // Buscar el último mensaje enviado a este número de teléfono
+    console.log('Buscando mensajes para el número:', numeroTelefono);
     const { data: mensajes, error: mensajesError } = await supabaseAdmin
       .from('whatsapp_messages')
       .select('*')
       .eq('phone_number', numeroTelefono)
       .order('created_at', { ascending: false })
       .limit(1);
+    
+    console.log('Resultado de búsqueda de mensajes:', { encontrados: mensajes?.length || 0 });
     
     if (mensajesError) {
       console.error('Error al buscar mensajes:', mensajesError);
@@ -27,11 +30,27 @@ async function procesarRespuestaTrabajador(mensaje, numeroTelefono) {
     }
     
     const ultimoMensaje = mensajes[0];
+    console.log('Último mensaje encontrado:', JSON.stringify(ultimoMensaje));
+    
     const solicitudId = ultimoMensaje.solicitud_id;
+    console.log('ID de solicitud extraído:', solicitudId);
     
     if (!solicitudId) {
       console.warn('El último mensaje no está asociado a una solicitud');
       return { success: false, error: 'Mensaje no asociado a solicitud' };
+    }
+    
+    // Verificar que la solicitud existe antes de intentar actualizarla
+    const { data: solicitudPrevia, error: errorVerificacionPrevia } = await supabaseAdmin
+      .from('solicitudes')
+      .select('id, estado')
+      .eq('id', solicitudId)
+      .single();
+      
+    if (errorVerificacionPrevia) {
+      console.error('Error al verificar existencia previa de solicitud:', errorVerificacionPrevia);
+    } else {
+      console.log('Estado actual de la solicitud antes de actualizar:', solicitudPrevia?.estado);
     }
     
     // Actualizar el estado de la solicitud según la respuesta
@@ -510,7 +529,12 @@ export async function POST(request) {
     
     // Extraer los datos relevantes
     const mensaje = formData.get('Body');
-    const numeroTelefono = formData.get('From')?.replace('whatsapp:', '');
+    // Asegurar que el número de teléfono esté correctamente formateado
+    let numeroTelefono = formData.get('From')?.replace('whatsapp:', '');
+    // Verificar si el número tiene el formato correcto (con código de país)
+    if (numeroTelefono && !numeroTelefono.startsWith('+')) {
+      numeroTelefono = '+' + numeroTelefono;
+    }
     const messageSid = formData.get('MessageSid') || 'No disponible';
     
     // Validar que tengamos los datos necesarios
