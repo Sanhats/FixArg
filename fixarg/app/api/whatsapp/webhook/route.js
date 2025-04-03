@@ -169,6 +169,7 @@ async function procesarRespuestaTrabajador(mensaje, numeroTelefono) {
       } else {
         console.log('Solicitud actualizada correctamente:', updateData);
       }
+      }
       
       // Registrar la respuesta en la tabla de mensajes
       await supabaseAdmin
