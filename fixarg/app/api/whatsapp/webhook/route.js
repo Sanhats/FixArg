@@ -334,8 +334,16 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: 'Solicitud inválida' }, { status: 400 });
     }
     
+    console.log('Webhook recibido - request completo:', request);
+    
     // Obtener los datos del formulario (Twilio envía datos como form-urlencoded)
     const formData = await request.formData();
+    
+    // Log de todos los campos recibidos para depuración
+    console.log('Todos los campos del webhook:');
+    for (const [key, value] of formData.entries()) {
+      console.log(`${key}: ${value}`);
+    }
     
     // Extraer los datos relevantes
     const mensaje = formData.get('Body');
