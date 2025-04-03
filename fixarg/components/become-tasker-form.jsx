@@ -107,7 +107,11 @@ export default function BecomeTaskerForm() {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.message || 'Error al enviar los datos')
+        // Manejo específico para el error 409 (Conflict)
+        if (response.status === 409) {
+          throw new Error('Ya existe un trabajador registrado con este correo electrónico. Por favor, utiliza otro correo o inicia sesión si ya tienes una cuenta.')
+        }
+        throw new Error(data.error || data.message || 'Error al enviar los datos')
       }
 
       setProgress(100)
