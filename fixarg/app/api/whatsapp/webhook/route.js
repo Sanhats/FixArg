@@ -10,12 +10,33 @@ async function procesarRespuestaTrabajador(mensaje, numeroTelefono) {
     
     // Buscar el último mensaje enviado a este número de teléfono
     console.log('Buscando mensajes para el número:', numeroTelefono);
-    const { data: mensajes, error: mensajesError } = await supabaseAdmin
+    
+    // Intentar buscar con el número exacto primero
+    let { data: mensajes, error: mensajesError } = await supabaseAdmin
       .from('whatsapp_messages')
       .select('*')
       .eq('phone_number', numeroTelefono)
       .order('created_at', { ascending: false })
       .limit(1);
+    
+    // Si no se encuentra, intentar buscar sin el prefijo de WhatsApp
+    if (!mensajes || mensajes.length === 0) {
+      console.log('No se encontraron mensajes con el número exacto, intentando búsqueda alternativa');
+      
+      // Intentar buscar con variantes del número
+      if (numeroTelefono.startsWith('+549')) {
+        // Intentar con formato +54 (sin el 9 para móviles)
+        const numeroAlternativo = '+54' + numeroTelefono.substring(4);
+        console.log('Intentando con número alternativo:', numeroAlternativo);
+        
+        ({ data: mensajes, error: mensajesError } = await supabaseAdmin
+          .from('whatsapp_messages')
+          .select('*')
+          .eq('phone_number', numeroAlternativo)
+          .order('created_at', { ascending: false })
+          .limit(1));
+      }
+    }
     
     console.log('Resultado de búsqueda de mensajes:', { encontrados: mensajes?.length || 0 });
     
@@ -57,11 +78,55 @@ async function procesarRespuestaTrabajador(mensaje, numeroTelefono) {
     if (mensajeNormalizado === 'CONFIRMAR') {
       // Actualizar el estado de la solicitud a 'confirmada'
       console.log(`Actualizando estado de solicitud ${solicitudId} a 'confirmada'`);
-      const { data: updateData, error: updateError } = await supabaseAdmin
+      console.log('Datos de la solicitud antes de actualizar:', { solicitudId, numeroTelefono });
+      
+      // Verificar que la solicitud existe antes de intentar actualizarla
+      console.log('Verificando existencia de solicitud con ID:', solicitudId);
+      const { data: solicitudExistente, error: errorVerificacion } = await supabaseAdmin
         .from('solicitudes')
-        .update({ estado: 'confirmada' })
+        .select('id, estado, trabajador_id, usuario_id')
         .eq('id', solicitudId)
-        .select();
+        .single();
+      
+      console.log('Resultado de verificación de solicitud:', { 
+        encontrada: !!solicitudExistente, 
+        error: errorVerificacion ? JSON.stringify(errorVerificacion) : 'ninguno',
+        datos: solicitudExistente ? JSON.stringify(solicitudExistente) : 'ninguno'
+      });
+        
+      if (errorVerificacion) {
+        console.error('Error al verificar existencia de solicitud:', errorVerificacion);
+        return { success: false, error: 'No se pudo verificar la existencia de la solicitud' };
+      }
+      
+      if (!solicitudExistente) {
+        console.error(`No se encontró la solicitud con ID ${solicitudId}`);
+        return { success: false, error: 'La solicitud no existe en la base de datos' };
+      }
+      
+      console.log('Estado actual de la solicitud antes de actualizar:', solicitudExistente.estado);
+      
+      // Si la solicitud ya está confirmada, no es necesario actualizarla
+      if (solicitudExistente.estado === 'confirmada') {
+        console.log('La solicitud ya estaba confirmada, no es necesario actualizarla');
+        // Continuar con el flujo normal para enviar la confirmación al cliente
+      } else {
+        // Actualizar el estado de la solicitud a 'confirmada'
+        console.log(`Ejecutando actualización de solicitud ${solicitudId} a estado 'confirmada'`);
+        const { data: updateData, error: updateError } = await supabaseAdmin
+          .from('solicitudes')
+          .update({ 
+            estado: 'confirmada',
+            updated_at: new Date().toISOString() // Añadir timestamp de actualización
+          })
+          .eq('id', solicitudId)
+          .select();
+        
+        console.log('Resultado de actualización:', { 
+          exitoso: !!updateData && updateData.length > 0, 
+          error: updateError ? JSON.stringify(updateError) : 'ninguno',
+          datos: updateData ? JSON.stringify(updateData) : 'ninguno'
+        });
       
       if (updateError) {
         console.error('Error al actualizar solicitud:', updateError);
@@ -531,9 +596,18 @@ export async function POST(request) {
     const mensaje = formData.get('Body');
     // Asegurar que el número de teléfono esté correctamente formateado
     let numeroTelefono = formData.get('From')?.replace('whatsapp:', '');
+    console.log('Número de teléfono original:', numeroTelefono);
+    
     // Verificar si el número tiene el formato correcto (con código de país)
     if (numeroTelefono && !numeroTelefono.startsWith('+')) {
       numeroTelefono = '+' + numeroTelefono;
+    }
+    
+    // Asegurarse de que los números argentinos tengan el formato correcto para WhatsApp
+    if (numeroTelefono && numeroTelefono.startsWith('+54') && !numeroTelefono.startsWith('+549')) {
+      // Si ya tiene código de país +54 pero no tiene el 9 para móviles, agregarlo
+      numeroTelefono = `+549${numeroTelefono.substring(3)}`;
+      console.log('Número reformateado para Argentina:', numeroTelefono);
     }
     const messageSid = formData.get('MessageSid') || 'No disponible';
     

@@ -6,7 +6,8 @@
  */
 
 require('dotenv').config();
-const fetch = require('node-fetch');
+// Importar node-fetch de manera compatible con ESM y CommonJS
+const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
 const FormData = require('form-data');
 
 // Función para verificar las variables de entorno
@@ -59,7 +60,9 @@ async function simulateWhatsAppResponse(phoneNumber, message) {
   if (baseUrl.startsWith('http')) {
     webhookUrl = `${baseUrl}/api/whatsapp/webhook`;
   } else {
-    webhookUrl = `https://${baseUrl}/api/whatsapp/webhook`;
+    // Eliminar la barra final si existe para evitar doble barra
+    const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+    webhookUrl = `https://${cleanBaseUrl}/api/whatsapp/webhook`;
   }
   
   console.log(`📡 Enviando solicitud POST a: ${webhookUrl}`);
