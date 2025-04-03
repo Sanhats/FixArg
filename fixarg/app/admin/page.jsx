@@ -158,6 +158,7 @@ export default function AdminPanel() {
   const filteredProfessionals = professionals.filter(p => {
     // Asegurarse de que el estado esté definido
     const status = p.status || 'pending';
+    console.log(`Profesional ${p.firstName} ${p.lastName} - Estado: ${status}`);
     return (activeTab === 'pending' && status === 'pending') || 
            (activeTab === 'approved' && status === 'approved');
   });

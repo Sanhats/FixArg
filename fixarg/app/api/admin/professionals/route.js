@@ -44,6 +44,7 @@ export async function GET(request) {
     const { data: professionals, error } = await supabaseAdmin
       .from('trabajadores')
       .select('*')
+      .order('created_at', { ascending: false }) // Ordenar por fecha de creación, más recientes primero
     
     if (error) {
       console.error('Error fetching professionals:', error)
