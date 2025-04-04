@@ -786,15 +786,40 @@ export async function POST(request) {
     console.log('Timestamp:', new Date().toISOString());
     
     // Verificar que la solicitud sea válida
-    if (!request.body) {
+    if (!request || !request.body) {
       console.error('Error: Solicitud sin cuerpo');
       return NextResponse.json({ success: false, error: 'Solicitud inválida' }, { status: 400 });
     }
     
-    console.log('Webhook recibido - request completo:', request);
+    // Log de la solicitud completa para depuración
+    console.log('Webhook recibido - headers:', Object.fromEntries(request.headers.entries()));
+    console.log('Webhook recibido - método:', request.method);
+    console.log('Webhook recibido - URL:', request.url);
     
     // Obtener los datos del formulario (Twilio envía datos como form-urlencoded)
-    const formData = await request.formData();
+    let formData;
+    try {
+      formData = await request.formData();
+      console.log('FormData obtenido correctamente');
+    } catch (formError) {
+      console.error('Error al obtener formData:', formError);
+      // Intentar obtener el cuerpo de la solicitud como texto
+      try {
+        const bodyText = await request.text();
+        console.log('Cuerpo de la solicitud como texto:', bodyText);
+        
+        // Crear un FormData manualmente a partir del texto
+        formData = new FormData();
+        const params = new URLSearchParams(bodyText);
+        for (const [key, value] of params.entries()) {
+          formData.append(key, value);
+        }
+        console.log('FormData creado manualmente a partir del texto');
+      } catch (textError) {
+        console.error('Error al obtener el cuerpo como texto:', textError);
+        return NextResponse.json({ success: false, error: 'No se pudo procesar el cuerpo de la solicitud' }, { status: 400 });
+      }
+    }
     
     // Log de todos los campos recibidos para depuración
     console.log('=== CAMPOS DEL WEBHOOK ===');
@@ -805,15 +830,31 @@ export async function POST(request) {
     }
     console.log('Resumen de campos:', JSON.stringify(camposWebhook));
     
-    // Extraer los datos relevantes
-    const mensaje = formData.get('Body');
+    // Verificar que tengamos los campos mínimos necesarios
+    if (Object.keys(camposWebhook).length === 0) {
+      console.error('Error: No se recibieron campos en el formulario');
+      return NextResponse.json({ success: false, error: 'No se recibieron datos en el formulario' }, { status: 400 });
+    }
+    
+    // Extraer los datos relevantes con manejo de casos alternativos
+    const mensaje = formData.get('Body') || formData.get('body') || formData.get('message') || '';
+    console.log('Mensaje extraído:', mensaje);
+    
     // Asegurar que el número de teléfono esté correctamente formateado
-    let numeroTelefono = formData.get('From')?.replace('whatsapp:', '');
-    console.log('Número de teléfono original:', numeroTelefono);
+    // Buscar el número en diferentes campos posibles
+    let numeroTelefono = formData.get('From') || formData.get('from') || formData.get('sender') || '';
+    console.log('Número de teléfono original (sin procesar):', numeroTelefono);
+    
+    // Limpiar el prefijo de WhatsApp si existe
+    if (numeroTelefono) {
+      numeroTelefono = numeroTelefono.replace('whatsapp:', '');
+      console.log('Número de teléfono después de quitar prefijo whatsapp:', numeroTelefono);
+    }
     
     // Verificar si el número tiene el formato correcto (con código de país)
     if (numeroTelefono && !numeroTelefono.startsWith('+')) {
       numeroTelefono = '+' + numeroTelefono;
+      console.log('Número de teléfono después de agregar +:', numeroTelefono);
     }
     
     // Asegurarse de que los números argentinos tengan el formato correcto para WhatsApp
@@ -822,13 +863,22 @@ export async function POST(request) {
       numeroTelefono = `+549${numeroTelefono.substring(3)}`;
       console.log('Número reformateado para Argentina:', numeroTelefono);
     }
-    const messageSid = formData.get('MessageSid') || 'No disponible';
+    
+    const messageSid = formData.get('MessageSid') || formData.get('messageSid') || formData.get('SmsMessageSid') || formData.get('smsMessageSid') || 'No disponible';
+    console.log('MessageSid extraído:', messageSid);
     
     // Validar que tengamos los datos necesarios
-    if (!mensaje || !numeroTelefono) {
-      console.error('Datos incompletos en webhook:', { mensaje, numeroTelefono, messageSid });
-      return NextResponse.json({ success: false, error: 'Datos incompletos' }, { status: 400 });
+    if (!mensaje) {
+      console.error('Mensaje no encontrado en la solicitud');
+      return NextResponse.json({ success: false, error: 'Mensaje no encontrado en la solicitud' }, { status: 400 });
     }
+    
+    if (!numeroTelefono) {
+      console.error('Número de teléfono no encontrado en la solicitud');
+      return NextResponse.json({ success: false, error: 'Número de teléfono no encontrado en la solicitud' }, { status: 400 });
+    }
+    
+    console.log('Datos extraídos correctamente:', { mensaje, numeroTelefono, messageSid });
     
     console.log('=== DATOS PROCESADOS ===');
     console.log('Webhook recibido:', { mensaje, numeroTelefono, messageSid });
@@ -848,17 +898,22 @@ export async function POST(request) {
       console.error('❌ Error en procesamiento:', resultado.error);
     }
     
-    // Responder a Twilio con un TwiML vacío (no es necesario enviar una respuesta inmediata)
+    // Responder a Twilio con un TwiML válido
     console.log('=== ENVIANDO RESPUESTA A TWILIO ===');
-    const response = new NextResponse(
-      '<?xml version="1.0" encoding="UTF-8"?><Response></Response>',
-      {
-        status: 200,
-        headers: {
-          'Content-Type': 'text/xml'
-        }
+    
+    // Crear una respuesta TwiML válida
+    // Twilio espera una respuesta XML con el formato correcto
+    const twimlResponse = '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
+    console.log('Respuesta TwiML:', twimlResponse);
+    
+    const response = new NextResponse(twimlResponse, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/xml',
+        'Cache-Control': 'no-store',
+        'X-Powered-By': 'FixArg Webhook'  // Identificador personalizado
       }
-    );
+    });
     
     console.log('=== FIN PROCESAMIENTO WEBHOOK TWILIO ===');
     return response;
