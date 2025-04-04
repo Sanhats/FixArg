@@ -18,7 +18,7 @@ async function procesarRespuestaTrabajador(mensaje, numeroTelefono) {
       .select('*')
       .eq('phone_number', numeroTelefono)
       .order('created_at', { ascending: false })
-      .limit(1);
+      .limit(5); // Aumentar el límite para tener más posibilidades de encontrar una coincidencia válida
     
     // Si no se encuentra, intentar buscar con variantes del número
     if (!mensajes || mensajes.length === 0) {
@@ -166,7 +166,7 @@ async function procesarRespuestaTrabajador(mensaje, numeroTelefono) {
             .single();
         
         console.log('Resultado de actualización:', { 
-          exitoso: !!updateData && updateData.length > 0, 
+          exitoso: !!updateData, 
           error: updateError ? JSON.stringify(updateError) : 'ninguno',
           datos: updateData ? JSON.stringify(updateData) : 'ninguno'
         });
@@ -176,7 +176,7 @@ async function procesarRespuestaTrabajador(mensaje, numeroTelefono) {
             throw new Error(`Error en primer intento: ${updateError.message}`);
           }
           
-          if (!updateData || updateData.length === 0) {
+          if (!updateData) {
             console.warn(`No se encontró la solicitud con ID ${solicitudId} para actualizar en primer intento`);
             // Intentar verificar si la solicitud existe
             const { data: solicitudExiste, error: errorVerificacion } = await supabaseAdmin
@@ -326,7 +326,7 @@ async function procesarRespuestaTrabajador(mensaje, numeroTelefono) {
           throw new Error(`Error en primer intento: ${updateError.message}`);
         }
         
-        if (!updateData || updateData.length === 0) {
+        if (!updateData) {
           console.warn(`No se encontró la solicitud con ID ${solicitudId} para actualizar en primer intento`);
           // Intentar verificar si la solicitud existe
           const { data: solicitudExiste, error: errorVerificacion } = await supabaseAdmin
@@ -473,7 +473,7 @@ async function procesarRespuestaTrabajador(mensaje, numeroTelefono) {
           throw new Error(`Error en primer intento: ${updateError.message}`);
         }
         
-        if (!updateData || updateData.length === 0) {
+        if (!updateData) {
           console.warn(`No se encontró la solicitud con ID ${solicitudId} para actualizar en primer intento`);
           // Intentar verificar si la solicitud existe
           const { data: solicitudExiste, error: errorVerificacion } = await supabaseAdmin
@@ -620,7 +620,7 @@ async function procesarRespuestaTrabajador(mensaje, numeroTelefono) {
           throw new Error(`Error en primer intento: ${updateError.message}`);
         }
         
-        if (!updateData || updateData.length === 0) {
+        if (!updateData) {
           console.warn(`No se encontró la solicitud con ID ${solicitudId} para actualizar en primer intento`);
           // Intentar verificar si la solicitud existe
           const { data: solicitudExiste, error: errorVerificacion } = await supabaseAdmin
@@ -864,6 +864,10 @@ export async function POST(request) {
       console.log('Número reformateado para Argentina:', numeroTelefono);
     }
     
+    // Asegurarse de que el número esté completamente limpio para la búsqueda
+    numeroTelefono = numeroTelefono.trim();
+    console.log('Número de teléfono final para procesamiento:', numeroTelefono);
+    
     const messageSid = formData.get('MessageSid') || formData.get('messageSid') || formData.get('SmsMessageSid') || formData.get('smsMessageSid') || 'No disponible';
     console.log('MessageSid extraído:', messageSid);
     
@@ -929,6 +933,15 @@ export async function POST(request) {
         method: request.method,
         headers: Object.fromEntries(request.headers.entries())
       });
+      
+      // Intentar registrar el cuerpo de la solicitud si es posible
+      try {
+        const bodyClone = request.clone();
+        const bodyText = await bodyClone.text();
+        console.error('Cuerpo de la solicitud:', bodyText);
+      } catch (bodyError) {
+        console.error('No se pudo obtener el cuerpo de la solicitud:', bodyError);
+      }
     } catch (logError) {
       console.error('Error al registrar detalles de la solicitud:', logError);
     }
