@@ -143,15 +143,27 @@ async function procesarRespuestaTrabajador(mensaje, numeroTelefono) {
         console.log(`Ejecutando actualización de solicitud ${solicitudId} a estado 'confirmada'`);
         
         try {
-          // Primero intentar con update y select
-          const { data: updateData, error: updateError } = await supabaseAdmin
+          // Primero intentar con update sin select para evitar problemas de retorno
+          const { error: updateError } = await supabaseAdmin
             .from('solicitudes')
             .update({ 
               estado: 'confirmada',
               fecha_actualizacion: new Date().toISOString() // Usar el campo correcto según el esquema
             })
+            .eq('id', solicitudId);
+            
+          // Verificar si hubo error en la actualización
+          if (updateError) {
+            console.error('Error al actualizar solicitud:', updateError);
+            throw new Error(`Error en actualización: ${updateError.message}`);
+          }
+          
+          // Verificar que la actualización fue exitosa consultando el estado actual
+          const { data: updateData, error: selectError } = await supabaseAdmin
+            .from('solicitudes')
+            .select('*')
             .eq('id', solicitudId)
-            .select();
+            .single();
         
         console.log('Resultado de actualización:', { 
           exitoso: !!updateData && updateData.length > 0, 
@@ -225,7 +237,7 @@ async function procesarRespuestaTrabajador(mensaje, numeroTelefono) {
           try {
             const { error: finalError } = await supabaseAdmin
               .from('solicitudes')
-              .update({ estado: 'confirmada' })
+              .update({ estado: 'rechazada' })
               .eq('id', solicitudId);
               
             if (finalError) {
@@ -358,7 +370,7 @@ async function procesarRespuestaTrabajador(mensaje, numeroTelefono) {
           try {
             const { error: finalError } = await supabaseAdmin
               .from('solicitudes')
-              .update({ estado: 'confirmada' })
+              .update({ estado: 'rechazada' })
               .eq('id', solicitudId);
               
             if (finalError) {
@@ -435,11 +447,26 @@ async function procesarRespuestaTrabajador(mensaje, numeroTelefono) {
       console.log(`Actualizando estado de solicitud ${solicitudId} a 'en_progreso'`);
       
       try {
-        const { data: updateData, error: updateError } = await supabaseAdmin
+        // Actualizar sin select para evitar problemas de retorno
+        const { error: updateError } = await supabaseAdmin
           .from('solicitudes')
-          .update({ estado: 'en_progreso' })
+          .update({ 
+            estado: 'en_progreso',
+            fecha_actualizacion: new Date().toISOString()
+          })
+          .eq('id', solicitudId);
+          
+        if (updateError) {
+          console.error('Error al actualizar solicitud:', updateError);
+          throw new Error(`Error en actualización: ${updateError.message}`);
+        }
+        
+        // Verificar que la actualización fue exitosa
+        const { data: updateData, error: selectError } = await supabaseAdmin
+          .from('solicitudes')
+          .select('*')
           .eq('id', solicitudId)
-          .select();
+          .single();
         
         if (updateError) {
           console.error('Error al actualizar solicitud (primer intento):', updateError);
@@ -567,11 +594,26 @@ async function procesarRespuestaTrabajador(mensaje, numeroTelefono) {
       console.log(`Actualizando estado de solicitud ${solicitudId} a 'completada'`);
       
       try {
-        const { data: updateData, error: updateError } = await supabaseAdmin
+        // Actualizar sin select para evitar problemas de retorno
+        const { error: updateError } = await supabaseAdmin
           .from('solicitudes')
-          .update({ estado: 'completada' })
+          .update({ 
+            estado: 'completada',
+            fecha_actualizacion: new Date().toISOString()
+          })
+          .eq('id', solicitudId);
+          
+        if (updateError) {
+          console.error('Error al actualizar solicitud:', updateError);
+          throw new Error(`Error en actualización: ${updateError.message}`);
+        }
+        
+        // Verificar que la actualización fue exitosa
+        const { data: updateData, error: selectError } = await supabaseAdmin
+          .from('solicitudes')
+          .select('*')
           .eq('id', solicitudId)
-          .select();
+          .single();
         
         if (updateError) {
           console.error('Error al actualizar solicitud (primer intento):', updateError);
