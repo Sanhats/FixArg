@@ -1,0 +1,7 @@
+{
+  "name": "fixarg-scripts",
+  "version": "1.0.0",
+  "description": "Scripts de utilidad para FixArg",
+  "type": "module",
+  "private": true
+}

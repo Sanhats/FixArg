@@ -75,7 +75,29 @@ Este script simula una solicitud POST de Twilio directamente al webhook, sin nec
 
 ## Solución de Problemas Comunes
 
-### 1. Mensaje "Configure your WhatsApp Sandbox's Inbound URL"
+### 1. Error "fetch is not a function"
+
+Este error ocurre cuando se ejecutan los scripts de prueba y node-fetch no está instalado correctamente o no se importa de la manera adecuada según la versión.
+
+**Solución:**
+- Para node-fetch v2 (CommonJS):
+  ```bash
+  npm install node-fetch@2
+  ```
+- Para node-fetch v3 (ESM):
+  ```bash
+  npm install node-fetch@3
+  ```
+
+Los scripts han sido actualizados para manejar ambas versiones automáticamente.
+
+### 2. URL duplicada (https://https://...)
+
+Si la variable de entorno NEXT_PUBLIC_VERCEL_URL ya incluye el protocolo (https://), los scripts pueden generar URLs incorrectas con protocolos duplicados.
+
+**Solución:** Los scripts han sido actualizados para detectar y corregir automáticamente este problema. Si sigues teniendo problemas, asegúrate de que la variable NEXT_PUBLIC_VERCEL_URL no incluya el protocolo.
+
+### 3. Mensaje "Configure your WhatsApp Sandbox's Inbound URL"
 
 Si al responder a un mensaje de WhatsApp recibes este mensaje, significa que Twilio no está procesando correctamente los mensajes entrantes porque no tiene configurada la URL del webhook.
 

@@ -5,9 +5,12 @@
  * que la configuración del webhook esté funcionando correctamente.
  */
 
-require('dotenv').config();
-const twilio = require('twilio');
-const fetch = require('node-fetch');
+import { config } from 'dotenv';
+import twilio from 'twilio';
+import fetch from 'node-fetch';
+
+// Configurar dotenv
+config();
 
 // Verificar que las variables de entorno estén configuradas
 const requiredEnvVars = [
@@ -64,8 +67,15 @@ function formatPhoneNumber(number) {
 async function checkWebhookAccessibility() {
   try {
     // Determinar la URL base
-    const baseUrl = process.env.NEXT_PUBLIC_VERCEL_URL || 'localhost:3000';
+    let baseUrl = process.env.NEXT_PUBLIC_VERCEL_URL || 'localhost:3000';
     const isLocalhost = baseUrl.includes('localhost');
+    
+    // Eliminar 'https://' o 'http://' si ya está incluido en la URL base
+    if (baseUrl.startsWith('https://')) {
+      baseUrl = baseUrl.substring(8);
+    } else if (baseUrl.startsWith('http://')) {
+      baseUrl = baseUrl.substring(7);
+    }
     
     // Construir la URL completa del webhook
     const webhookUrl = isLocalhost
@@ -89,6 +99,21 @@ async function checkWebhookAccessibility() {
     }
   } catch (error) {
     console.error('❌ Error al verificar el webhook:', error.message);
+    
+    // Proporcionar mensajes de error más específicos
+    if (error.message === 'fetch is not a function') {
+      console.error('Este error ocurre porque node-fetch no está disponible o no se importó correctamente.');
+      console.error('Solución: Asegúrate de que node-fetch esté instalado correctamente:');
+      console.error('  npm install node-fetch@2');
+      console.error('O para la versión 3 (que requiere ESM):');
+      console.error('  npm install node-fetch@3');
+    } else if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
+      console.error('No se pudo conectar al servidor. Verifica que:');
+      console.error('1. La URL del webhook sea correcta');
+      console.error('2. El servidor esté en ejecución');
+      console.error('3. No haya problemas de red o firewall');
+    }
+    
     return false;
   }
 }
