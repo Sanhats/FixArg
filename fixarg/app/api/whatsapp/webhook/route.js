@@ -112,9 +112,12 @@ async function procesarRespuestaTrabajador(mensaje, numeroTelefono) {
       console.log('Verificando existencia de solicitud con ID:', solicitudId);
       const { data: solicitudExistente, error: errorVerificacion } = await supabaseAdmin
         .from('solicitudes')
-        .select('id, estado, trabajador_id, usuario_id')
+        .select('id, estado, trabajador_id, usuario_id, fecha_creacion')
         .eq('id', solicitudId)
         .single();
+        
+      // Registrar información detallada para depuración
+      console.log('Consulta SQL ejecutada:', `SELECT id, estado, trabajador_id, usuario_id, fecha_creacion FROM solicitudes WHERE id = '${solicitudId}'`);
       
       console.log('Resultado de verificación de solicitud:', { 
         encontrada: !!solicitudExistente, 
@@ -143,32 +146,56 @@ async function procesarRespuestaTrabajador(mensaje, numeroTelefono) {
         console.log(`Ejecutando actualización de solicitud ${solicitudId} a estado 'confirmada'`);
         
         try {
-          // Primero intentar con update sin select para evitar problemas de retorno
-          const { error: updateError } = await supabaseAdmin
+          // Usar una actualización más robusta con mejor manejo de errores
+          const { data: updateData, error: updateError } = await supabaseAdmin
             .from('solicitudes')
             .update({ 
               estado: 'confirmada',
               fecha_actualizacion: new Date().toISOString() // Usar el campo correcto según el esquema
             })
-            .eq('id', solicitudId);
+            .eq('id', solicitudId)
+            .select();
+          
+          // Registrar inmediatamente el resultado de la operación
+          console.log('Resultado inmediato de actualización:', { 
+            exitoso: !!updateData, 
+            datos: updateData ? JSON.stringify(updateData) : 'ninguno',
+            error: updateError ? JSON.stringify(updateError) : 'ninguno' 
+          });
             
-          // Verificar si hubo error en la actualización
+          // Verificar si hubo error en la actualización con registro detallado
           if (updateError) {
-            console.error('Error al actualizar solicitud:', updateError);
-            throw new Error(`Error en actualización: ${updateError.message}`);
+            console.error('Error detallado al actualizar solicitud:', JSON.stringify(updateError));
+            console.error('Código de error:', updateError.code);
+            console.error('Mensaje de error:', updateError.message);
+            console.error('Detalles:', updateError.details || 'No hay detalles adicionales');
+            
+            // Intentar una actualización alternativa inmediatamente
+            console.log('Intentando método alternativo de actualización...');
+            const { error: retryError } = await supabaseAdmin
+              .from('solicitudes')
+              .update({ estado: 'confirmada' })
+              .eq('id', solicitudId);
+              
+            if (retryError) {
+              console.error('Error en intento alternativo:', JSON.stringify(retryError));
+              throw new Error(`Error en actualización: ${updateError.message}`);
+            } else {
+              console.log('Actualización alternativa exitosa');
+            }
           }
           
           // Verificar que la actualización fue exitosa consultando el estado actual
-          const { data: updateData, error: selectError } = await supabaseAdmin
+          const { data: verificacionData, error: verificacionError } = await supabaseAdmin
             .from('solicitudes')
             .select('*')
             .eq('id', solicitudId)
             .single();
         
         console.log('Resultado de actualización:', { 
-          exitoso: !!updateData, 
-          error: updateError ? JSON.stringify(updateError) : 'ninguno',
-          datos: updateData ? JSON.stringify(updateData) : 'ninguno'
+          exitoso: !!verificacionData, 
+          error: verificacionError ? JSON.stringify(verificacionError) : 'ninguno',
+          datos: verificacionData ? JSON.stringify(verificacionData) : 'ninguno'
         });
       
           if (updateError) {
@@ -321,9 +348,10 @@ async function procesarRespuestaTrabajador(mensaje, numeroTelefono) {
           .eq('id', solicitudId)
           .select();
         
-        if (updateError) {
-          console.error('Error al actualizar solicitud (primer intento):', updateError);
-          throw new Error(`Error en primer intento: ${updateError.message}`);
+        if (verificacionError) {
+          console.error('Error al verificar actualización:', verificacionError);
+          // No lanzamos error aquí, solo registramos el problema de verificación
+          console.log('Continuando con el flujo normal a pesar del error de verificación');
         }
         
         if (!updateData) {
@@ -468,9 +496,10 @@ async function procesarRespuestaTrabajador(mensaje, numeroTelefono) {
           .eq('id', solicitudId)
           .single();
         
-        if (updateError) {
-          console.error('Error al actualizar solicitud (primer intento):', updateError);
-          throw new Error(`Error en primer intento: ${updateError.message}`);
+        if (verificacionError) {
+          console.error('Error al verificar actualización:', verificacionError);
+          // No lanzamos error aquí, solo registramos el problema de verificación
+          console.log('Continuando con el flujo normal a pesar del error de verificación');
         }
         
         if (!updateData) {
@@ -615,9 +644,10 @@ async function procesarRespuestaTrabajador(mensaje, numeroTelefono) {
           .eq('id', solicitudId)
           .single();
         
-        if (updateError) {
-          console.error('Error al actualizar solicitud (primer intento):', updateError);
-          throw new Error(`Error en primer intento: ${updateError.message}`);
+        if (verificacionError) {
+          console.error('Error al verificar actualización:', verificacionError);
+          // No lanzamos error aquí, solo registramos el problema de verificación
+          console.log('Continuando con el flujo normal a pesar del error de verificación');
         }
         
         if (!updateData) {
@@ -779,6 +809,24 @@ async function procesarRespuestaTrabajador(mensaje, numeroTelefono) {
   }
 }
 
+// Endpoint para manejar solicitudes GET (verificación de Twilio)
+export async function GET(request) {
+  console.log('=== SOLICITUD GET RECIBIDA EN WEBHOOK ===');
+  console.log('Headers:', Object.fromEntries(request.headers.entries()));
+  console.log('URL:', request.url);
+  
+  // Responder con un mensaje simple para verificación
+  // Twilio espera un código 200 para verificar que el webhook está configurado correctamente
+  return new NextResponse('Webhook de WhatsApp configurado correctamente. Este endpoint solo acepta solicitudes POST.', {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/plain',
+      'Cache-Control': 'no-store',
+      'X-Powered-By': 'FixArg Webhook'
+    }
+  });
+}
+
 // Endpoint para recibir webhooks de Twilio
 export async function POST(request) {
   try {
@@ -799,7 +847,9 @@ export async function POST(request) {
     // Obtener los datos del formulario (Twilio envía datos como form-urlencoded)
     let formData;
     try {
-      formData = await request.formData();
+      // Clonar la solicitud para evitar errores de stream ya consumido
+      const requestClone = request.clone();
+      formData = await requestClone.formData();
       console.log('FormData obtenido correctamente');
     } catch (formError) {
       console.error('Error al obtener formData:', formError);
@@ -837,17 +887,23 @@ export async function POST(request) {
     }
     
     // Extraer los datos relevantes con manejo de casos alternativos
-    const mensaje = formData.get('Body') || formData.get('body') || formData.get('message') || '';
+    // Twilio puede enviar el mensaje en diferentes campos dependiendo de la configuración
+    const mensaje = formData.get('Body') || formData.get('body') || 
+                   formData.get('message') || formData.get('SmsBody') || 
+                   formData.get('smsBody') || formData.get('text') || '';
     console.log('Mensaje extraído:', mensaje);
     
     // Asegurar que el número de teléfono esté correctamente formateado
-    // Buscar el número en diferentes campos posibles
-    let numeroTelefono = formData.get('From') || formData.get('from') || formData.get('sender') || '';
+    // Buscar el número en diferentes campos posibles que Twilio puede enviar
+    let numeroTelefono = formData.get('From') || formData.get('from') || 
+                         formData.get('sender') || formData.get('WaId') || 
+                         formData.get('waId') || formData.get('phone') || 
+                         formData.get('Phone') || '';
     console.log('Número de teléfono original (sin procesar):', numeroTelefono);
     
     // Limpiar el prefijo de WhatsApp si existe
     if (numeroTelefono) {
-      numeroTelefono = numeroTelefono.replace('whatsapp:', '');
+      numeroTelefono = numeroTelefono.replace(/^whatsapp:/, '');
       console.log('Número de teléfono después de quitar prefijo whatsapp:', numeroTelefono);
     }
     
@@ -907,15 +963,25 @@ export async function POST(request) {
     
     // Crear una respuesta TwiML válida
     // Twilio espera una respuesta XML con el formato correcto
+    // Podemos incluir un mensaje vacío para no enviar respuesta automática al usuario
     const twimlResponse = '<?xml version="1.0" encoding="UTF-8"?><Response></Response>';
     console.log('Respuesta TwiML:', twimlResponse);
+    
+    // Registrar información de depuración adicional
+    console.log('Estado final de procesamiento:', resultado.success ? 'Exitoso' : 'Fallido');
+    console.log('Mensaje de resultado:', resultado.message || resultado.error || 'No hay mensaje adicional');
     
     const response = new NextResponse(twimlResponse, {
       status: 200,
       headers: {
         'Content-Type': 'text/xml',
-        'Cache-Control': 'no-store',
-        'X-Powered-By': 'FixArg Webhook'  // Identificador personalizado
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'Surrogate-Control': 'no-store',
+        'X-Powered-By': 'FixArg Webhook',  // Identificador personalizado
+        'X-Processing-Result': resultado.success ? 'success' : 'error',
+        'X-Processing-Message': resultado.message || resultado.error || 'No message'
       }
     });
     
