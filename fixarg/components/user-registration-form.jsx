@@ -82,7 +82,7 @@ const localities = {
   ]
 }
 
-export default function UserRegistrationForm() {
+export default function UserRegistrationForm({ triggerClassName = "", triggerVariant = "ghost" }) {
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -179,7 +179,11 @@ export default function UserRegistrationForm() {
 
       setIsVerifying(false)
       setSubmitError(null)
-      alert("Código de verificación enviado. Por favor, revisa tu correo electrónico.")
+      if (data.devCode) {
+        alert(`${data.message || 'En desarrollo'} ${data.devCode}\n\nCopia el código y pégalo en el campo de verificación.`)
+      } else {
+        alert("Código de verificación enviado. Por favor, revisa tu correo electrónico.")
+      }
     } catch (error) {
       setIsVerifying(false)
       setSubmitError(error.message)
@@ -236,7 +240,7 @@ export default function UserRegistrationForm() {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="ghost">Registrarse</Button>
+        <Button variant={triggerVariant} className={triggerClassName}>Registrarse</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px] w-[95vw] max-h-[90vh] overflow-y-auto">
         <DialogHeader>

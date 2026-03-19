@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -36,22 +37,38 @@ const provinces = [
   // Add other provinces here
 ]
 
+const SKILLS_OPTIONS = [
+  'Plomería', 'Gasista Matriculado', 'Electricidad', 'Albañil', 'Pintor', 'Carpintería',
+  'Herrero', 'Techista', 'Instalador de Aire', 'Jardinería', 'Cerrajería', 'Fletero', 'Mudanza', 'Limpieza',
+]
+
 export default function BecomeTaskerForm() {
+  const router = useRouter()
   const [step, setStep] = useState(1)
-  const [progress, setProgress] = useState(25)
+  const TOTAL_STEPS = 5
+  const [progress, setProgress] = useState(20)
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
     displayName: "",
     profilePicture: null,
+    profilePhotoUrl: "",
     description: "",
     occupation: "",
     skills: [],
+    skillsJson: [],
     email: "",
     phone: "",
     hourlyRate: "",
     province: "",
-    password: "", // New password field
+    password: "",
+    documentAntecedentesUrl: "",
+    dniFrenteUrl: "",
+    dniReversoUrl: "",
+    experience: "",
+    tools: "",
+    zones: "",
+    availability: "",
   })
   const [previewUrl, setPreviewUrl] = useState(null)
   const fileInputRef = useRef(null)
@@ -61,15 +78,28 @@ export default function BecomeTaskerForm() {
   const [emailVerified, setEmailVerified] = useState(false)
   const [verificationCode, setVerificationCode] = useState("")
   const [isVerifying, setIsVerifying] = useState(false)
+  const [uploading, setUploading] = useState(null)
 
   const handleNext = () => {
-    setStep(step + 1)
-    setProgress(progress + 25)
+    setStep((s) => Math.min(s + 1, TOTAL_STEPS))
+    setProgress((p) => Math.min(p + 20, 100))
   }
 
   const handleBack = () => {
-    setStep(step - 1)
-    setProgress(progress - 25)
+    setStep((s) => Math.max(s - 1, 1))
+    setProgress((p) => Math.max(p - 20, 20))
+  }
+
+  const uploadFile = async (file, folder) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    const res = await fetch(`/api/upload?folder=${folder}`, { method: 'POST', body: fd })
+    if (!res.ok) {
+      const err = await res.json()
+      throw new Error(err.error || 'Error al subir')
+    }
+    const data = await res.json()
+    return data.url
   }
 
   const handleSubmit = async (e) => {
@@ -80,20 +110,39 @@ export default function BecomeTaskerForm() {
     }
     setIsSubmitting(true)
     setSubmitError(null)
-    
+    let profilePhotoUrl = formData.profilePhotoUrl
+    if (formData.profilePicture && !profilePhotoUrl) {
+      try {
+        profilePhotoUrl = await uploadFile(formData.profilePicture, 'profile')
+      } catch (err) {
+        setSubmitError(err.message || 'Error al subir la foto de perfil')
+        setIsSubmitting(false)
+        return
+      }
+    }
     try {
+      const skillsJson = (formData.skillsJson || []).filter(s => s.skill && (s.hourlyRate > 0 || s.hourlyRate === '0'))
+      const firstSkill = skillsJson[0]
       const dataToSend = {
         firstName: formData.firstName,
         lastName: formData.lastName,
         displayName: formData.displayName,
         description: formData.description,
-        occupation: formData.occupation,
-        skills: formData.skills,
+        occupation: formData.occupation || firstSkill?.skill,
         email: formData.email,
         phone: formData.phone,
-        hourlyRate: parseFloat(formData.hourlyRate),
+        hourlyRate: firstSkill ? Number(firstSkill.hourlyRate) : parseFloat(formData.hourlyRate) || 0,
         province: formData.province,
-        password: formData.password, // Include password in the data to send
+        password: formData.password,
+        documentAntecedentesUrl: formData.documentAntecedentesUrl || undefined,
+        dniFrenteUrl: formData.dniFrenteUrl || undefined,
+        dniReversoUrl: formData.dniReversoUrl || undefined,
+        profilePhotoUrl: profilePhotoUrl || undefined,
+        experience: formData.experience || undefined,
+        tools: formData.tools || undefined,
+        zones: formData.zones || undefined,
+        availability: formData.availability || undefined,
+        skillsJson: skillsJson.length ? skillsJson : undefined,
       }
 
       const response = await fetch('/api/taskers', {
@@ -179,7 +228,11 @@ export default function BecomeTaskerForm() {
 
       setIsVerifying(false);
       setSubmitError(null);
-      alert("Código de verificación enviado. Por favor, revisa tu correo electrónico.");
+      if (data.devCode) {
+        alert(`${data.message || 'En desarrollo'} ${data.devCode}\n\nCopia el código y pégalo en el campo de verificación.`);
+      } else {
+        alert("Código de verificación enviado. Por favor, revisa tu correo electrónico.");
+      }
     } catch (error) {
       setIsVerifying(false);
       setSubmitError(error.message);
@@ -221,16 +274,14 @@ export default function BecomeTaskerForm() {
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#091E05] flex items-center justify-center">
                 <Check className="w-8 h-8 text-white" />
               </div>
-              <DialogTitle className="text-center text-xl sm:text-2xl">¡Solicitud Enviada!</DialogTitle>
-              <CardDescription className="text-center text-sm sm:text-base">
-                Gracias por tu interés en unirte a nuestra comunidad. Revisaremos tu solicitud y nos pondremos en contacto contigo pronto.
+              <DialogTitle className="text-center text-xl sm:text-2xl">¡Solicitud enviada!</DialogTitle>
+              <CardDescription className="text-center text-sm sm:text-base space-y-2">
+                <p>Gracias por unirte. La plataforma realizará la verificación de antecedentes e identidad con los documentos que subiste.</p>
+                <p>Te avisaremos cuando tu cuenta esté aprobada y podrás empezar a recibir trabajos.</p>
               </CardDescription>
             </CardHeader>
             <CardFooter className="flex flex-col sm:flex-row justify-center gap-4">
-              <Button 
-                className="w-full sm:w-auto bg-[#14A800] text-white hover:bg-[#14A800]/90"
-                onClick={() => router.push('/')}
-              >
+              <Button className="w-full sm:w-auto bg-[#14A800] text-white hover:bg-[#14A800]/90" onClick={() => router.push('/')}>
                 <Home className="mr-2 h-4 w-4" />
                 Ir al inicio
               </Button>
@@ -257,233 +308,244 @@ export default function BecomeTaskerForm() {
         </DialogHeader>
         
         <Progress value={progress} className="mb-4 color-[#324376]" />
-        
-        <div className="flex items-center gap-2 mb-6">
-          <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm ${step >= 1 ? 'bg-[#091E05] text-white' : 'bg-gray-200'}`}>1</div>
-          <div className="h-px flex-1 bg-gray-200" />
-          <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm ${step >= 2 ? 'bg-[#091E05] text-white' : 'bg-gray-200'}`}>2</div>
-          <div className="h-px flex-1 bg-gray-200" />
-          <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm ${step >= 3 ? 'bg-[#091E05] text-white' : 'bg-gray-200'}`}>3</div>
+        <div className="flex items-center gap-1 mb-6">
+          {[1, 2, 3, 4, 5].map((s) => (
+            <div key={s} className="flex items-center flex-1">
+              <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs sm:text-sm shrink-0 ${step >= s ? 'bg-[#091E05] text-white' : 'bg-gray-200'}`}>{s}</div>
+              {s < 5 && <div className="h-px flex-1 bg-gray-200 min-w-0" />}
+            </div>
+          ))}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
           {step === 1 && (
             <div className="space-y-4">
-              <h3 className="text-base sm:text-lg font-medium">Informacion personal</h3>
+              <h3 className="text-base sm:text-lg font-medium">1. Crear cuenta</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="firstName">Nombre</Label>
-                  <Input
-                    id="firstName"
-                    value={formData.firstName}
-                    onChange={(e) => setFormData({...formData, firstName: e.target.value})}
-                    required
-                  />
+                  <Input id="firstName" value={formData.firstName} onChange={(e) => setFormData({...formData, firstName: e.target.value})} required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="lastName">Apellido</Label>
-                  <Input
-                    id="lastName"
-                    value={formData.lastName}
-                    onChange={(e) => setFormData({...formData, lastName: e.target.value})}
-                    required
-                  />
+                  <Input id="lastName" value={formData.lastName} onChange={(e) => setFormData({...formData, lastName: e.target.value})} required />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="displayName">Nombre de profesional</Label>
-                <Input
-                  id="displayName"
-                  value={formData.displayName}
-                  onChange={(e) => setFormData({...formData, displayName: e.target.value})}
-                  required
-                />
+                <Label htmlFor="email">Correo electrónico</Label>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Input id="email" type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} required disabled={emailVerified} className="flex-grow" />
+                  <Button type="button" onClick={handleSendVerificationCode} disabled={emailVerified || isVerifying}>{isVerifying ? "Enviando..." : "Verificar"}</Button>
+                </div>
+              </div>
+              {!emailVerified && (
+                <div className="space-y-2">
+                  <Label>Código de verificación</Label>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Input type="text" value={verificationCode} onChange={(e) => setVerificationCode(e.target.value)} placeholder="Código del correo" className="flex-grow" />
+                    <Button type="button" onClick={handleVerifyCode} disabled={isVerifying}>{isVerifying ? "Verificando..." : "Confirmar"}</Button>
+                  </div>
+                </div>
+              )}
+              {emailVerified && <p className="text-[#091E05] flex items-center text-sm"><Check className="mr-2 h-4 w-4" /> Correo verificado</p>}
+              <div className="space-y-2">
+                <Label htmlFor="password">Contraseña</Label>
+                <Input id="password" type="password" value={formData.password} onChange={(e) => setFormData({...formData, password: e.target.value})} required />
               </div>
               <div className="space-y-2">
-                <Label>Foto de perfil</Label>
-                <div 
-                  className="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer relative"
-                  onClick={triggerFileInput}
-                >
-                  {previewUrl ? (
-                    <>
-                      <img src={previewUrl} alt="Profile preview" className="mx-auto h-24 w-24 sm:h-32 sm:w-32 object-cover rounded-full" />
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        className="absolute top-2 right-2"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRemoveImage();
-                        }}
-                      >
-                        Eliminar
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-[#71816D]" />
-                      <div className="mt-2 text-sm sm:text-base">Haga clic para cargar o arrastrar y soltar</div>
-                    </>
-                  )}
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileChange}
-                    accept="image/*"
-                    className="hidden"
-                  />
-                </div>
+                <Label htmlFor="phone">Teléfono</Label>
+                <Input id="phone" type="tel" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} required />
               </div>
             </div>
           )}
 
           {step === 2 && (
             <div className="space-y-4">
-              <h3 className="text-base sm:text-lg font-medium">Informacion personal</h3>
-              <div className="space-y-2">
-                <Label htmlFor="occupation">Ocupacion</Label>
-                <Select onValueChange={(value) => setFormData({...formData, occupation: value})}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecciona tu ocupacion" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ensamblaje">Ensamblaje</SelectItem>
-                    <SelectItem value="montaje">Montaje</SelectItem>
-                    <SelectItem value="mudanza">Mudanza</SelectItem>
-                    <SelectItem value="limpieza">Limpieza</SelectItem>
-                    <SelectItem value="ayuda en exteriores">Ayuda en exteriores</SelectItem>
-                    <SelectItem value="reparaciones del hogar">Reparaciones del Hogar</SelectItem>
-                    <SelectItem value="pintura">Pintura</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">Descripcion del servicio</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Háblanos un poco de tu experiencia laboral, de los proyectos interesantes que has realizado y de tu especialidad."
-                  value={formData.description}
-                  onChange={(e) => setFormData({...formData, description: e.target.value})}
-                  required
-                  className="min-h-[100px]"
+              <h3 className="text-base sm:text-lg font-medium">2. Documento antecedentes penales</h3>
+              <p className="text-sm text-muted-foreground">Sube tu certificado de antecedentes penales (imagen o PDF). La plataforma verificará este documento.</p>
+              <div className="border-2 border-dashed rounded-lg p-4">
+                <input
+                  type="file"
+                  accept="image/*,.pdf"
+                  className="hidden"
+                  id="antecedentes"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    setUploading('antecedentes')
+                    setSubmitError(null)
+                    try {
+                      const url = await uploadFile(file, 'antecedentes')
+                      setFormData((f) => ({ ...f, documentAntecedentesUrl: url }))
+                    } catch (err) {
+                      setSubmitError(err.message)
+                    } finally {
+                      setUploading(null)
+                    }
+                  }}
                 />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="province" className="text-sm sm:text-base">Provincia</Label>
-                <Select
-                  value={formData.province}
-                  onValueChange={(value) => setFormData({...formData, province: value})}
-                >
-                  <SelectTrigger className="text-sm sm:text-base">
-                    <SelectValue placeholder="Selecciona una provincia" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {provinces.map((province) => (
-                <SelectItem key={province} value={province} className="text-sm sm:text-base">
-                        {province}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="hourlyRate">Precio por hora (ARS)</Label>
-                <Input
-                  id="hourlyRate"
-                  type="number"
-                  placeholder="Ej: 1000"
-                  value={formData.hourlyRate}
-                  onChange={(e) => setFormData({...formData, hourlyRate: e.target.value})}
-                  required
-                  min="0"
-                  step="0.01"
-                />
+                <Label htmlFor="antecedentes" className="cursor-pointer flex flex-col items-center gap-2 py-4">
+                  <Upload className="h-10 w-10 text-[#71816D]" />
+                  <span className="text-sm">{uploading === 'antecedentes' ? 'Subiendo...' : formData.documentAntecedentesUrl ? '✓ Documento subido' : 'Haz clic para subir'}</span>
+                </Label>
               </div>
             </div>
           )}
 
           {step === 3 && (
             <div className="space-y-4">
-              <h3 className="text-base sm:text-lg font-medium">Seguridad de la cuenta</h3>
-              <div className="space-y-2">
-                <Label htmlFor="email">Correo electronico</Label>
-                <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => 
-                      setFormData({ ...formData, email: e.target.value })
-                    }
-                    required
-                    disabled={emailVerified}
-                    className="flex-grow"
-                  />
-                  <Button
-                    type="button"
-                    onClick={handleSendVerificationCode}
-                    disabled={emailVerified || isVerifying}
-                    className="w-full sm:w-auto"
-                  >
-                    {isVerifying ? "Enviando..." : "Verificar"}
-                  </Button>
-                </div>
-              </div>
-              {!emailVerified && (
-                <div className="space-y-2">
-                  <Label htmlFor="verificationCode">
-                    Código de verificación
+              <h3 className="text-base sm:text-lg font-medium">3. Verificación identidad - DNI</h3>
+              <p className="text-sm text-muted-foreground">Sube foto del DNI (frente y reverso). Sirve para verificar tu identidad.</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="border-2 border-dashed rounded-lg p-4">
+                  <Label className="text-sm font-medium">DNI frente</Label>
+                  <input type="file" accept="image/*" className="hidden" id="dni-frente"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0]
+                      if (!file) return
+                      setUploading('dni-frente')
+                      setSubmitError(null)
+                      try {
+                        const url = await uploadFile(file, 'dni')
+                        setFormData((f) => ({ ...f, dniFrenteUrl: url }))
+                      } catch (err) { setSubmitError(err.message) }
+                      finally { setUploading(null) }
+                    }} />
+                  <Label htmlFor="dni-frente" className="cursor-pointer flex flex-col items-center gap-2 py-2 text-muted-foreground">
+                    <Upload className="h-8 w-8" />
+                    <span className="text-xs">{formData.dniFrenteUrl ? '✓ Subido' : 'Subir frente'}</span>
                   </Label>
-                  <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-2">
-                    <Input
-                      id="verificationCode"
-                      type="text"
-                      value={verificationCode}
-                      onChange={(e) => setVerificationCode(e.target.value)}
-                      required
-                      className="flex-grow"
-                    />
-                    <Button
-                      type="button"
-                      onClick={handleVerifyCode}
-                      disabled={isVerifying}
-                      className="w-full sm:w-auto"
+                </div>
+                <div className="border-2 border-dashed rounded-lg p-4">
+                  <Label className="text-sm font-medium">DNI reverso</Label>
+                  <input type="file" accept="image/*" className="hidden" id="dni-reverso"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0]
+                      if (!file) return
+                      setUploading('dni-reverso')
+                      setSubmitError(null)
+                      try {
+                        const url = await uploadFile(file, 'dni')
+                        setFormData((f) => ({ ...f, dniReversoUrl: url }))
+                      } catch (err) { setSubmitError(err.message) }
+                      finally { setUploading(null) }
+                    }} />
+                  <Label htmlFor="dni-reverso" className="cursor-pointer flex flex-col items-center gap-2 py-2 text-muted-foreground">
+                    <Upload className="h-8 w-8" />
+                    <span className="text-xs">{formData.dniReversoUrl ? '✓ Subido' : 'Subir reverso'}</span>
+                  </Label>
+                </div>
+              </div>
+              {uploading && <p className="text-sm text-muted-foreground">{uploading === 'dni-frente' ? 'Subiendo frente...' : 'Subiendo reverso...'}</p>}
+            </div>
+          )}
+
+          {step === 4 && (
+            <div className="space-y-4">
+              <h3 className="text-base sm:text-lg font-medium">4. Habilidades y precio por hora</h3>
+              <p className="text-sm text-muted-foreground">Elige las habilidades que ofreces y define tu tarifa por hora para cada una (ARS).</p>
+              <div className="space-y-3">
+                {(formData.skillsJson && formData.skillsJson.length > 0 ? formData.skillsJson : [{ skill: '', hourlyRate: '' }]).map((item, idx) => (
+                  <div key={idx} className="flex flex-wrap gap-2 items-center">
+                    <Select
+                      value={item.skill}
+                      onValueChange={(val) => {
+                        const list = [...(formData.skillsJson || [])]
+                        if (!list[idx]) list[idx] = { skill: '', hourlyRate: item.hourlyRate }
+                        list[idx].skill = val
+                        setFormData((f) => ({ ...f, skillsJson: list }))
+                      }}
                     >
-                      {isVerifying ? "Verificando..." : "Confirmar"}
-                    </Button>
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Habilidad" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SKILLS_OPTIONS.map((opt) => (
+                          <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      type="number"
+                      placeholder="$/h"
+                      className="w-24"
+                      min="0"
+                      step="0.01"
+                      value={item.hourlyRate}
+                      onChange={(e) => {
+                        const list = [...(formData.skillsJson || [])]
+                        if (!list[idx]) list[idx] = { skill: item.skill, hourlyRate: '' }
+                        list[idx].hourlyRate = e.target.value
+                        setFormData((f) => ({ ...f, skillsJson: list }))
+                      }}
+                    />
+                    {idx > 0 && (
+                      <Button type="button" variant="ghost" size="sm" onClick={() => setFormData((f) => ({ ...f, skillsJson: (f.skillsJson || []).filter((_, i) => i !== idx) }))}>Quitar</Button>
+                    )}
                   </div>
-                </div>
-              )}
-              {emailVerified && (
-                <div className="text-[#091E05] flex items-center text-sm sm:text-base">
-                  <Check className="mr-2 h-4 w-4 sm:h-5 sm:w-5" /> Correo electrónico verificado
-                </div>
-              )}
+                ))}
+                <Button type="button" variant="outline" size="sm" onClick={() => setFormData((f) => ({ ...f, skillsJson: [...(f.skillsJson || []), { skill: '', hourlyRate: '' }] }))}>+ Añadir otra habilidad</Button>
+              </div>
+            </div>
+          )}
+
+          {step === 5 && (
+            <div className="space-y-4">
+              <h3 className="text-base sm:text-lg font-medium">5. Configuración del perfil</h3>
               <div className="space-y-2">
-                <Label htmlFor="password">Contraseña</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) =>
-                    setFormData({ ...formData, password: e.target.value })
-                  }
-                  required
-                />
+                <Label htmlFor="displayName">Nombre de profesional</Label>
+                <Input id="displayName" value={formData.displayName} onChange={(e) => setFormData({...formData, displayName: e.target.value})} required placeholder="Como quieres que te vean los clientes" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="phone">Numero de telefono</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) =>
-                    setFormData({ ...formData, phone: e.target.value })
-                  }
-                  required
-                />
+                <Label>Foto de perfil</Label>
+                <div className="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer relative" onClick={triggerFileInput}>
+                  {previewUrl ? (
+                    <>
+                      <img src={previewUrl} alt="Preview" className="mx-auto h-24 w-24 sm:h-32 sm:w-32 object-cover rounded-full" />
+                      <Button type="button" variant="destructive" size="sm" className="absolute top-2 right-2" onClick={(e) => { e.stopPropagation(); handleRemoveImage(); }}>Eliminar</Button>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="mx-auto h-10 w-10 text-[#71816D]" />
+                      <div className="mt-2 text-sm">Clic para cargar foto</div>
+                    </>
+                  )}
+                  <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="description">Descripción del servicio</Label>
+                <Textarea id="description" placeholder="Tu experiencia, proyectos y especialidad." value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} required className="min-h-[80px]" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="experience">Experiencia</Label>
+                <Textarea id="experience" placeholder="Años de experiencia, trabajos destacados..." value={formData.experience} onChange={(e) => setFormData({...formData, experience: e.target.value})} className="min-h-[60px]" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="tools">Herramientas disponibles</Label>
+                <Input id="tools" placeholder="Ej: taladro, destornilladores, escalera..." value={formData.tools} onChange={(e) => setFormData({...formData, tools: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="zones">Zonas donde trabajas</Label>
+                <Input id="zones" placeholder="Ej: Tucumán capital, Yerba Buena..." value={formData.zones} onChange={(e) => setFormData({...formData, zones: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="availability">Horarios disponibles</Label>
+                <Input id="availability" placeholder="Ej: Lun–Vie 8–18, Sábados mañana" value={formData.availability} onChange={(e) => setFormData({...formData, availability: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="province">Provincia</Label>
+                <Select value={formData.province} onValueChange={(v) => setFormData({...formData, province: v})}>
+                  <SelectTrigger><SelectValue placeholder="Selecciona provincia" /></SelectTrigger>
+                  <SelectContent>
+                    {provinces.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="hourlyRateFallback">Precio por hora por defecto (ARS)</Label>
+                <Input id="hourlyRateFallback" type="number" placeholder="Ej: 5000" min="0" step="0.01" value={formData.hourlyRate} onChange={(e) => setFormData({...formData, hourlyRate: e.target.value})} />
+                <p className="text-xs text-muted-foreground">Usado si no definiste tarifas por habilidad en el paso anterior.</p>
               </div>
             </div>
           )}
@@ -494,7 +556,7 @@ export default function BecomeTaskerForm() {
                 Volver
               </Button>
             )}
-            {step < 3 ? (
+            {step < TOTAL_STEPS ? (
               <Button type="button" className="ml-auto" onClick={handleNext}>
                 Avanzar <ChevronRight className="ml-2 h-4 w-4" />
               </Button>

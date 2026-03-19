@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useAuth } from '@/lib/AuthContext'
@@ -38,9 +39,15 @@ export default function TrabajadorLoginPage() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100">
-      <div className="p-8 bg-white rounded shadow-md w-96">
-        <h1 className="mb-6 text-2xl font-bold text-center">Iniciar Sesión como Trabajador</h1>
+    <div className="min-h-screen bg-[#E8E8E8] flex flex-col">
+      <header className="bg-[#71816D] py-3 px-4">
+        <Button asChild variant="ghost" size="sm" className="text-white hover:bg-white/10">
+          <Link href="/">← Volver al inicio</Link>
+        </Button>
+      </header>
+      <div className="flex-1 flex items-center justify-center p-4">
+      <div className="p-8 bg-white rounded-lg shadow-md w-full max-w-md">
+        <h1 className="mb-6 text-2xl font-bold text-center text-[#091E05]">Iniciar sesión (profesional)</h1>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="email" className="block mb-1 font-medium">
@@ -67,10 +74,15 @@ export default function TrabajadorLoginPage() {
             />
           </div>
           {error && <p className="text-red-500">{error}</p>}
-          <Button type="submit" className="w-full">
-            Iniciar Sesión
+          <Button type="submit" className="w-full bg-[#71816D] hover:bg-[#71816D]/90">
+            Iniciar sesión
           </Button>
         </form>
+        <p className="mt-4 text-center text-sm text-muted-foreground">
+          ¿Aún no eres profesional?{' '}
+          <Link href="/" className="text-[#71816D] font-medium hover:underline">Regístrate desde el inicio</Link>
+        </p>
+      </div>
       </div>
     </div>
   )

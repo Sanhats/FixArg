@@ -93,7 +93,7 @@ export async function POST(request) {
 
     const token = sign(userForToken, process.env.JWT_SECRET, { expiresIn: '7d' });
 
-    // Preparar datos de usuario para respuesta (sin incluir la contraseña)
+    // Preparar datos de usuario para respuesta (sin incluir la contraseña). role para contexto en front.
     const userData = {
       _id: user.id,
       email: user.email,
@@ -103,7 +103,9 @@ export async function POST(request) {
       street: user.street,
       streetNumber: user.street_number,
       province: user.province,
-      locality: user.locality
+      locality: user.locality,
+      role: 'user',
+      puntos: user.puntos != null ? Number(user.puntos) : 0,
     };
 
     console.log(`[${requestId}] Login exitoso para usuario: ${userData.email}`);

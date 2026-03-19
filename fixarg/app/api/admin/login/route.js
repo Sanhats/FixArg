@@ -95,10 +95,27 @@ export async function POST(request) {
 
     console.log('Username validation successful, checking password');
 
-    const isPasswordValid = await bcrypt.compare(
-      password,
-      "$2a$10$MI57y.ssXPB7eBGqEB2qVerUEsZqLKOQQY7j3M0okUxUdO/PkZAWG"
-    );
+    // Contraseña: ADMIN_PASSWORD (texto) tiene prioridad; si no, ADMIN_PASSWORD_HASH (bcrypt)
+    const plainFromEnv = process.env.ADMIN_PASSWORD?.trim();
+    let hashFromEnv = process.env.ADMIN_PASSWORD_HASH?.trim() || null;
+    if (hashFromEnv) {
+      // Quitar comillas y espacios que el .env pueda dejar (el hash tiene $)
+      hashFromEnv = hashFromEnv.replace(/^['"`\s]+|['"`\s]+$/g, '');
+      if (!hashFromEnv.startsWith('$2')) hashFromEnv = null; // hash bcrypt válido empieza por $2a$ o $2b$
+    }
+    const pass = (password || '').trim();
+    let isPasswordValid = false;
+    if (plainFromEnv) {
+      isPasswordValid = pass === plainFromEnv;
+    } else if (hashFromEnv) {
+      isPasswordValid = await bcrypt.compare(pass, hashFromEnv);
+    } else {
+      // Fallback cuando no hay ADMIN_PASSWORD ni ADMIN_PASSWORD_HASH: contraseña "admin123"
+      isPasswordValid = await bcrypt.compare(
+        pass,
+        "$2a$10$5Z1TWa0bcURxRkNmGThI7uXzb8SzV0YwGM7R4HvA3wlRvin3oIpMO"
+      );
+    }
 
     console.log('Password validation result:', isPasswordValid);
 

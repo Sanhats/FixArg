@@ -1,242 +1,402 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect } from "react"
+import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Search, Wrench, Drill, Truck, Brush, Hammer, PaintBucket, Leaf, Menu, X } from "lucide-react"
-import { Sheet, SheetContent, SheetClose } from "@/components/ui/sheet"
+import {
+  Wrench,
+  Drill,
+  Truck,
+  Brush,
+  Hammer,
+  PaintBucket,
+  Leaf,
+  Phone,
+  Mail,
+  MapPin,
+  Quote,
+  Check,
+  Shield,
+  Clock,
+  Users,
+  Calendar,
+  FileCheck,
+} from "lucide-react"
 import BecomeTaskerForm from "@/components/become-tasker-form"
-import UserRegistrationForm from "@/components/user-registration-form"
 import LoginForm from "@/components/login-form"
+import UserRegistrationForm from "@/components/user-registration-form"
 import { useAuth } from "@/lib/AuthContext"
 import { Logo } from "../components/ui/logo"
 
-export default function HomePage() {
-  const { isLoggedIn, user, logout } = useAuth()
-  const router = useRouter()
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState("")
+const CATEGORIAS = [
+  { icon: Wrench, label: "Plomería", desc: "Arreglos e instalación.", categoria: "plomeria" },
+  { icon: Drill, label: "Electricidad", desc: "Instalación y reparación.", categoria: "electricidad" },
+  { icon: Truck, label: "Mudanza", desc: "Fletes.", categoria: "mudanza" },
+  { icon: Brush, label: "Limpieza", desc: "Limpieza a fondo.", categoria: "limpieza" },
+  { icon: Leaf, label: "Jardinería", desc: "Poda y mantenimiento.", categoria: "jardineria" },
+  { icon: Hammer, label: "Carpintería", desc: "Muebles y madera.", categoria: "carpinteria" },
+  { icon: PaintBucket, label: "Pintura", desc: "Interior y exterior.", categoria: "pintura" },
+]
 
-  const handleServiciosClick = (e) => {
+const BENEFICIOS_HERO = [
+  { Icon: Users, text: "Fixers verificados" },
+  { Icon: Shield, text: "Todo claro de entrada" },
+  { Icon: MapPin, text: "Profesionales de acá" },
+  { Icon: Calendar, text: "Vos elegís día y hora" },
+]
+
+const GARANTIAS = [
+  { Icon: Users, text: "Solo Fixers chequeados" },
+  { Icon: FileCheck, text: "Precio y tiempo visibles" },
+  { Icon: Clock, text: "Respuesta en 24 h" },
+  { Icon: Shield, text: "Laburo con nombre y apellido" },
+]
+
+const PASOS = [
+  { num: 1, titulo: "Publicás tu pedido", desc: "Describís el laburo y los Fixers lo ven." },
+  { num: 2, titulo: "Elegís a tu Fixer", desc: "Ves perfil, precio y coordinás." },
+  { num: 3, titulo: "Se hace el trabajo", desc: "Viene, lo resuelve y listo." },
+]
+
+const TESTIMONIOS = [
+  { texto: "Llegó en hora, hizo bien el laburo. Lo recomiendo.", nombre: "María", lugar: "CABA" },
+  { texto: "En FixArg encontré al que necesitaba al toque.", nombre: "Juan", lugar: "Buenos Aires" },
+]
+
+const NAV_LINKS = [
+  { label: "Servicios", href: "#servicios" },
+  { label: "Cómo funciona", href: "#como-funciona" },
+  { label: "Contacto", href: "#cta" },
+]
+
+// Imágenes que cargan en Unsplash (IDs estables)
+const HERO_IMG = "https://images.unsplash.com/photo-1504328345606-18bbc8c9d7d1?auto=format&fit=crop&w=800&q=80"
+const COMO_FUNCIONA_IMG = "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=600&q=80"
+
+export default function HomePage() {
+  const { isLoggedIn, isCliente, isTrabajador, isLoading } = useAuth()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (isLoading) return
+    if (!isLoggedIn) return
+    if (isTrabajador) router.replace("/trabajador/dashboard")
+    else if (isCliente) router.replace("/servicios")
+  }, [isLoading, isLoggedIn, isTrabajador, isCliente, router])
+
+  const handleServiciosClick = (e, categoria) => {
+    e.preventDefault()
+    const path = categoria ? `/servicios?categoria=${encodeURIComponent(categoria)}` : "/servicios"
+    if (isLoggedIn) {
+      router.push(path)
+    } else {
+      router.push(`/login?next=${encodeURIComponent(path)}`)
+    }
+  }
+
+  const handleVerServiciosClick = (e) => {
     e.preventDefault()
     if (isLoggedIn) {
       router.push("/servicios")
     } else {
-      alert("Por favor, inicia sesión para ver los servicios.")
+      router.push("/login?next=/servicios")
     }
   }
 
-  const handleSearch = (e) => {
-    e.preventDefault()
-    if (searchQuery.trim()) {
-      console.log("Searching for:", searchQuery)
-    }
+  const scrollTo = (href) => {
+    document.querySelector(href)?.scrollIntoView({ behavior: "smooth" })
   }
 
-  const services = [
-    { icon: Wrench, label: "Ensamblaje", color: "bg-amber-100" },
-    { icon: Drill, label: "Montaje", color: "bg-blue-100" },
-    { icon: Truck, label: "Mudanza", color: "bg-green-100" },
-    { icon: Brush, label: "Limpieza", color: "bg-purple-100" },
-    { icon: Leaf, label: "Ayuda en exteriores", color: "bg-orange-100" },
-    { icon: Hammer, label: "Reparaciones", color: "bg-red-100" },
-    { icon: PaintBucket, label: "Pintura", color: "bg-teal-100" },
-  ]
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="text-[#71816D] font-medium">Cargando...</div>
+      </div>
+    )
+  }
+
+  if (isLoggedIn) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="text-[#71816D] font-medium">Redirigiendo...</div>
+      </div>
+    )
+  }
 
   return (
-    <div className="h-screen flex flex-col bg-white overflow-hidden">
-      {/* Header */}
-      <header className="bg-[#71816D] z-50 shadow-md">
+    <div className="min-h-screen flex flex-col bg-white" id="inicio">
+      {/* ——— Navbar única (estilo HomePro) ——— */}
+      <header className="bg-[#091E05] sticky top-0 z-50 border-b border-white/5">
         <div className="container mx-auto px-4">
           <nav className="flex items-center justify-between h-16">
-            <Logo className="py-2" />
-
-            <div className="hidden md:flex items-center gap-4">
-              <Button
-                variant="ghost"
-                className="text-white hover:bg-white/10 transition-colors font-medium"
-                onClick={handleServiciosClick}
-              >
-                Servicios
-              </Button>
-
-              {isLoggedIn ? (
-                <div className="flex items-center gap-3 bg-white/10 rounded-full pl-4 pr-1 py-1">
-                  <span className="text-white font-medium">Hola, {user?.firstName}</span>
-                  <Button
-                    onClick={logout}
-                    variant="ghost"
-                    size="sm"
-                    className="text-white hover:bg-white/20 rounded-full h-8"
-                  >
-                    Cerrar sesión
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <LoginForm />
-                  <UserRegistrationForm />
-                  <BecomeTaskerForm />
-                </div>
-              )}
+            <Logo className="py-2 [&_img]:invert opacity-95 hover:opacity-100 transition-opacity" />
+            <div className="hidden md:flex items-center gap-8">
+              {NAV_LINKS.map(({ label, href }) => (
+                <button
+                  key={href}
+                  type="button"
+                  onClick={() => scrollTo(href)}
+                  className="text-white/90 hover:text-white text-sm font-medium transition-colors"
+                >
+                  {label}
+                </button>
+              ))}
+              <LoginForm
+                triggerClassName="text-white/90 hover:text-white text-sm font-medium flex items-center gap-2"
+                triggerVariant="ghost"
+              />
             </div>
-
-            <Button
-              variant="ghost"
-              size="icon"
-              className="md:hidden text-white hover:bg-white/10"
-              onClick={() => setIsMenuOpen(true)}
-            >
-              <Menu className="h-6 w-6" />
-            </Button>
+            <div className="flex items-center gap-3">
+              <LoginForm
+                triggerClassName="md:hidden text-white/90 hover:text-white text-sm"
+                triggerVariant="ghost"
+              />
+              <Button
+                size="sm"
+                onClick={handleVerServiciosClick}
+                className="bg-[#71816D] hover:bg-[#71816D]/90 text-white font-semibold rounded-sm px-5 h-9"
+              >
+                Ver servicios
+              </Button>
+              <Button asChild size="sm" variant="ghost" className="text-white/90 hover:text-white hidden md:inline-flex">
+                <Link href="/trabajador/login">Soy profesional</Link>
+              </Button>
+            </div>
           </nav>
         </div>
       </header>
 
-      {/* Mobile menu */}
-      <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
-        <SheetContent className="bg-[#71816D] border-l border-white/20 p-0">
-          <div className="flex flex-col h-full">
-            <div className="p-4 border-b border-white/10 flex items-center justify-between">
-              <Logo className="h-8 w-auto" />
-              <SheetClose className="rounded-full p-1 hover:bg-white/10">
-                <X className="h-5 w-5 text-white" />
-              </SheetClose>
-            </div>
-
-            <div className="flex-1 overflow-auto p-4">
-              <div className="flex flex-col gap-3 mt-2">
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start text-white hover:bg-white/10 font-medium"
-                  onClick={handleServiciosClick}
-                >
-                  Servicios
-                </Button>
-
-                {isLoggedIn ? (
-                  <div className="bg-white/10 rounded-lg p-4 mt-2">
-                    <p className="text-white mb-2">Bienvenido, {user?.firstName}</p>
-                    <Button
-                      onClick={logout}
-                      variant="outline"
-                      className="w-full bg-white text-[#71816D] hover:bg-white/90 border-white"
-                    >
-                      Cerrar sesión
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-3 mt-2">
-                    <LoginForm />
-                    <UserRegistrationForm />
-                    <BecomeTaskerForm />
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </SheetContent>
-      </Sheet>
-
-      {/* Main content - centered layout with organized services */}
-      <main className="flex-1 flex flex-col relative overflow-hidden">
-        {/* Background elements */}
-        <div className="absolute inset-0 z-0 overflow-hidden">
-          <div className="absolute top-0 left-0 w-1/3 h-full bg-[#71816D]/5 rounded-br-[100px]"></div>
-          <div className="absolute bottom-0 right-0 w-1/3 h-2/3 bg-[#71816D]/5 rounded-tl-[100px]"></div>
+      {/* ——— Hero: dos columnas (imagen | título + checks + CTA + 4 beneficios) ——— */}
+      <section className="bg-[#091E05] min-h-[90vh] flex flex-col lg:flex-row">
+        <div className="relative flex-1 min-h-[40vh] lg:min-h-0 lg:w-[45%] order-2 lg:order-1">
+          <Image
+            src={HERO_IMG}
+            alt="Persona trabajando en un arreglo del hogar"
+            fill
+            className="object-cover object-center"
+            priority
+            sizes="(max-width: 1024px) 100vw, 45vw"
+          />
         </div>
+        <div className="flex-1 flex flex-col justify-center px-4 py-12 lg:py-16 lg:pl-16 lg:pr-8 order-1 lg:order-2">
+          <h1 className="text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold text-white leading-tight mb-4">
+            El lugar para encontrar al que arregla
+          </h1>
+          <p className="text-lg text-white/90 mb-8">
+            En FixArg publicás lo que necesitás y elegís entre profesionales verificados. Laburo claro, gente de acá.
+          </p>
+          <div className="flex flex-wrap gap-3 mb-8">
+            <LoginForm
+              triggerClassName="bg-[#71816D] hover:bg-[#71816D]/90 text-white font-semibold rounded-sm px-8 h-12 text-base border-0"
+              triggerVariant="outline"
+            />
+            <UserRegistrationForm
+              triggerClassName="bg-white/10 text-white border-2 border-white hover:bg-white/20 font-semibold rounded-sm px-8 h-12 text-base"
+              triggerVariant="outline"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4 text-white/90 text-sm">
+            {BENEFICIOS_HERO.map(({ Icon, text }) => (
+              <div key={text} className="flex items-center gap-2">
+                <Icon className="h-5 w-5 text-[#71816D] shrink-0" />
+                <span>{text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
-        {/* Main content structure */}
-        <div className="relative z-10 flex-1 flex flex-col">
-          {/* Top services row */}
-          <div className="pt-6 px-6">
-            <div className="max-w-4xl mx-auto grid grid-cols-7 gap-2">
-              {services.map((service, index) => (
-                <Link
-                  key={index}
-                  href="#"
-                  onClick={handleServiciosClick}
-                  className="group flex flex-col items-center gap-1 p-2 rounded-lg hover:shadow-sm transition-all duration-200"
+      {/* ——— Servicios (grid + CTA) ——— */}
+      <section id="servicios" className="py-16 md:py-24 bg-gray-50">
+        <div className="container mx-auto px-4">
+          <h2 className="text-2xl md:text-3xl font-bold text-[#091E05] mb-2">Servicios</h2>
+          <p className="text-gray-600 mb-10 max-w-xl">Elegí la categoría y encontrá Fixers cerca tuyo.</p>
+          <div className="grid lg:grid-cols-[1fr_280px] gap-8 lg:gap-10">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {CATEGORIAS.map((item, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={(e) => handleServiciosClick(e, item.categoria)}
+                  className="group text-left p-5 rounded-lg bg-white border border-gray-100 shadow-sm hover:shadow-md hover:border-[#71816D]/30 transition-all"
                 >
-                  <div
-                    className={`p-3 rounded-full ${service.color} group-hover:scale-110 transition-transform duration-200`}
-                  >
-                    <service.icon className="w-5 h-5 text-[#71816D]" />
+                  <div className="p-3 rounded-lg bg-[#091E05]/5 w-fit mb-3 group-hover:bg-[#71816D]/10 transition-colors">
+                    <item.icon className="h-6 w-6 text-[#71816D]" />
                   </div>
-                  <span className="text-xs text-center text-[#091E05] font-medium">{service.label}</span>
-                </Link>
+                  <h3 className="font-semibold text-[#091E05] mb-1">{item.label}</h3>
+                  <p className="text-sm text-gray-600">{item.desc}</p>
+                </button>
               ))}
             </div>
-          </div>
-
-          {/* Centered content */}
-          <div className="flex-1 flex items-center justify-center px-4">
-            <div className="max-w-xl w-full text-center">
-              <h1 className="text-3xl md:text-5xl font-bold text-[#091E05] mb-4 leading-tight">
-                Confía en profesionales,
-                <span className="text-[#71816D] block">confía en resultados.</span>
-              </h1>
-
-              <p className="text-gray-600 mb-6 max-w-md mx-auto">
-                Encuentra expertos calificados para cualquier tarea que necesites realizar.
-              </p>
-
-              {/* Search bar */}
-              <form onSubmit={handleSearch} className="relative mb-6 max-w-md mx-auto">
-                <Input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="¿En qué podemos ayudarte?"
-                  className="w-full h-14 pl-5 pr-14 text-base rounded-full border-2 border-[#71816D] focus-visible:ring-[#71816D]/30 transition-all shadow-sm"
-                />
-                <Button
-                  type="submit"
-                  className="absolute right-1.5 top-1/2 -translate-y-1/2 bg-[#71816D] h-11 w-11 rounded-full p-0 hover:bg-[#71816D]/90 transition-colors"
-                  aria-label="Buscar"
-                >
-                  <Search className="h-5 w-5 text-white" />
-                </Button>
-              </form>
-
-              {/* CTA buttons */}
-              <div className="flex flex-wrap justify-center gap-3">
-                <Button className="bg-[#71816D] hover:bg-[#71816D]/90 text-white px-6" onClick={handleServiciosClick}>
-                  Explorar servicios
-                </Button>
-                <BecomeTaskerForm buttonClassName="bg-white border-2 border-[#71816D] text-[#71816D] hover:bg-[#71816D]/10 px-6" />
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom section with testimonial */}
-          <div className="pb-6 px-6">
-            <div className="max-w-4xl mx-auto flex justify-end">
-              <div className="bg-white p-4 rounded-xl shadow-md border border-gray-100 max-w-xs">
-                <div className="flex items-center gap-1 mb-2">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <svg key={star} className="w-4 h-4 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                  ))}
-                </div>
-                <p className="text-gray-600 text-sm">
-                  &quot;El servicio fue excelente. El profesional llegó puntual y trabajó eficientemente.&quot;
-                </p>
-                <div className="flex items-center gap-2 mt-2">
-                  <div className="w-6 h-6 rounded-full bg-[#71816D]/20 flex items-center justify-center text-[#71816D] font-bold text-xs">
-                    A
-                  </div>
-                  <p className="text-xs font-medium text-[#091E05]">Cliente Satisfecho</p>
+            <div className="lg:flex flex-col">
+              <div className="bg-[#71816D] text-white p-6 rounded-lg h-fit lg:sticky lg:top-24">
+                <p className="text-sm font-medium mb-4">¿Tenés un laburo? Entrá y publicalo.</p>
+                <div className="space-y-2">
+                  <LoginForm
+                    triggerClassName="w-full bg-white text-[#71816D] hover:bg-white/95 font-semibold rounded-sm h-11 border-0"
+                    triggerVariant="outline"
+                  />
+                  <UserRegistrationForm
+                    triggerClassName="w-full bg-white/10 text-white border border-white hover:bg-white/20 font-semibold rounded-sm h-11"
+                    triggerVariant="outline"
+                  />
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </main>
+      </section>
+
+      {/* ——— En buena onda (fondo oscuro) ——— */}
+      <section className="py-16 md:py-20 bg-[#091E05]">
+        <div className="container mx-auto px-4">
+          <h2 className="text-2xl md:text-3xl font-bold text-white text-center mb-4">
+            Así trabaja FixArg
+          </h2>
+          <p className="text-white/80 text-center mb-12 max-w-xl mx-auto">Verificamos a los profesionales. Vos ves precio y tiempo antes de elegir. Todo con nombre y apellido.</p>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8 max-w-4xl mx-auto">
+            {GARANTIAS.map(({ Icon, text }) => (
+              <div key={text} className="flex items-center gap-4 text-white">
+                <div className="p-3 rounded-lg bg-white/10 shrink-0">
+                  <Icon className="h-6 w-6 text-[#71816D]" />
+                </div>
+                <span className="font-medium">{text}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ——— Cómo funciona FixArg (imagen | pasos numerados) ——— */}
+      <section id="como-funciona" className="py-16 md:py-24 bg-white">
+        <div className="container mx-auto px-4">
+          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+            <div className="relative aspect-[4/3] rounded-lg overflow-hidden shadow-xl order-2 lg:order-1">
+              <Image
+                src={COMO_FUNCIONA_IMG}
+                alt="Profesional trabajando"
+                fill
+                className="object-cover"
+                sizes="(max-width: 1024px) 100vw, 50vw"
+              />
+              <div className="absolute top-4 right-4 p-2 rounded-full bg-[#71816D] text-white">
+                <Check className="h-6 w-6" />
+              </div>
+            </div>
+            <div className="order-1 lg:order-2">
+              <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-[#091E05] mb-8">
+                Cómo funciona FixArg
+              </h2>
+              <ul className="space-y-6">
+                {PASOS.map(({ num, titulo, desc }) => (
+                  <li key={num} className="flex gap-4">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#71816D] text-white font-bold">
+                      {num}
+                    </span>
+                    <div>
+                      <h3 className="font-semibold text-[#091E05] mb-1">{titulo}</h3>
+                      <p className="text-gray-600 text-sm">{desc}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ——— Testimonios ——— */}
+      <section id="testimonios" className="py-16 md:py-24 bg-gray-50">
+        <div className="container mx-auto px-4">
+          <h2 className="text-2xl md:text-3xl font-bold text-[#091E05] text-center mb-2">
+            Lo que dicen
+          </h2>
+          <p className="text-gray-600 text-center mb-10">Quienes ya usaron FixArg.</p>
+          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            {TESTIMONIOS.map((t, i) => (
+              <div key={i} className="bg-white p-6 md:p-8 rounded-lg shadow-md border border-gray-100">
+                <Quote className="h-10 w-10 text-[#71816D] mb-4" strokeWidth={1.5} />
+                <p className="text-gray-600 mb-4">&quot;{t.texto}&quot;</p>
+                <p className="font-semibold text-[#091E05]">{t.nombre}</p>
+                <p className="text-sm text-gray-500">{t.lugar}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ——— CTA + Contacto ——— */}
+      <section id="cta" className="py-16 md:py-20 bg-[#091E05]">
+        <div className="container mx-auto px-4">
+          <div className="max-w-3xl mx-auto text-center">
+            <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">
+              Entrá a FixArg
+            </h2>
+            <p className="text-white/80 mb-6">Registrate como cliente o sumate como Fixer.</p>
+            <div className="flex flex-wrap justify-center gap-4 mb-6">
+              <LoginForm
+                triggerClassName="bg-[#71816D] hover:bg-[#71816D]/90 text-white font-semibold rounded-sm px-8 h-12 border-0"
+                triggerVariant="outline"
+              />
+              <UserRegistrationForm
+                triggerClassName="border-2 border-white text-white hover:bg-white/10 font-semibold rounded-sm px-8 h-12"
+                triggerVariant="outline"
+              />
+              <Button asChild size="lg" variant="ghost" className="text-white hover:bg-white/10">
+                <Link href="/trabajador/login">Soy profesional</Link>
+              </Button>
+            </div>
+            <p className="text-white/70 text-sm mb-4">Cualquier duda:</p>
+            <div className="flex flex-wrap justify-center gap-6 text-white/90 text-sm">
+              <a href="tel:+5491112345678" className="flex items-center gap-2 hover:text-white">
+                <Phone className="h-5 w-5" /> +54 9 11 1234-5678
+              </a>
+              <a href="mailto:info@fixarg.com" className="flex items-center gap-2 hover:text-white">
+                <Mail className="h-5 w-5" /> info@fixarg.com
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ——— Footer ——— */}
+      <footer className="bg-[#0a2610] text-white pt-12 pb-8">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pb-8 border-b border-white/10">
+            <div>
+              <Logo className="mb-4 [&_img]:invert opacity-95" />
+              <p className="text-white/70 text-sm">
+                FixArg: quien necesita un arreglo encuentra al que lo hace. Acá en Argentina.
+              </p>
+            </div>
+            <div>
+              <h3 className="font-semibold text-sm mb-3">Empresa</h3>
+              <ul className="space-y-2 text-sm text-white/80">
+                <li><button type="button" onClick={() => scrollTo("#servicios")} className="hover:text-white text-left">Servicios</button></li>
+                <li><button type="button" onClick={() => scrollTo("#como-funciona")} className="hover:text-white text-left">Cómo funciona</button></li>
+                <li><Link href="/trabajador/login" className="hover:text-white">Soy profesional</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="font-semibold text-sm mb-3">Contacto</h3>
+              <ul className="space-y-2 text-sm text-white/80">
+                <li><a href="tel:+5491112345678" className="flex items-center gap-2 hover:text-white"><Phone className="h-4 w-4" /> +54 9 11 1234-5678</a></li>
+                <li><a href="mailto:info@fixarg.com" className="flex items-center gap-2 hover:text-white"><Mail className="h-4 w-4" /> info@fixarg.com</a></li>
+                <li className="flex items-center gap-2"><MapPin className="h-4 w-4" /> Argentina</li>
+              </ul>
+            </div>
+          </div>
+          <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-white/50">
+            <div className="flex gap-6">
+              <Link href="#" className="hover:text-white/80">Términos y condiciones</Link>
+              <Link href="#" className="hover:text-white/80">Política de privacidad</Link>
+            </div>
+            <p>© {new Date().getFullYear()} FixArg. Todos los derechos reservados.</p>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }
-

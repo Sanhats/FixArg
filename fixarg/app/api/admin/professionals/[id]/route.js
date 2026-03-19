@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server'
 import supabaseAdmin from '@/lib/supabase'
 import { verifyToken } from '@/lib/auth'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export async function DELETE(request, { params }) {
   try {
     // Verificar el token de autenticación
@@ -113,10 +116,12 @@ export async function PATCH(request, { params }) {
       )
     }
 
-    return NextResponse.json(
+    const res = NextResponse.json(
       { message: 'Estado del profesional actualizado con éxito' },
       { status: 200 }
     )
+    res.headers.set('Cache-Control', 'private, no-store, max-age=0')
+    return res
   } catch (error) {
     console.error('Error updating professional status:', error)
     return NextResponse.json(

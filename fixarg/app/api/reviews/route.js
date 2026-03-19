@@ -48,7 +48,7 @@ export async function GET(request) {
   }
 }
 
-// POST: Crear una nueva reseña
+// POST: Crear una nueva reseña (por solicitud completada o por trabajador)
 export async function POST(request) {
   try {
     const token = request.headers.get('Authorization')?.split(' ')[1]
@@ -61,42 +61,88 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Token inválido' }, { status: 401 })
     }
 
+    // Solo el cliente (usuario) puede dejar reseñas
+    if (decodedToken.role !== 'user') {
+      return NextResponse.json({ error: 'Solo el cliente puede calificar' }, { status: 403 })
+    }
+
     const body = await request.json()
-    const { workerId, rating, comment } = body
+    const { workerId, rating, comment, solicitudId } = body
 
-    if (!workerId || !rating || rating < 1 || rating > 5) {
-      return NextResponse.json({ error: 'Datos inválidos' }, { status: 400 })
+    if (!rating || rating < 1 || rating > 5) {
+      return NextResponse.json({ error: 'Datos inválidos (rating 1-5)' }, { status: 400 })
     }
 
-    // Verificar si el usuario ya ha realizado una reseña para este trabajador
-    const { data: existingReview, error: checkError } = await supabaseAdmin
-      .from('reviews')
-      .select('id')
-      .eq('trabajador_id', workerId)
-      .eq('usuario_id', decodedToken.userId)
-      .single()
+    let resolvedWorkerId = workerId
 
-    if (checkError && checkError.code !== 'PGRST116') {
-      console.error('Error al verificar reseña existente:', checkError)
-      return NextResponse.json({ error: 'Error del servidor' }, { status: 500 })
-    }
+    if (solicitudId) {
+      // Flujo por solicitud: una review por solicitud completada
+      const { data: solicitud, error: solError } = await supabaseAdmin
+        .from('solicitudes')
+        .select('id, estado, usuario_id, trabajador_id')
+        .eq('id', solicitudId)
+        .single()
 
-    if (existingReview) {
-      return NextResponse.json(
-        { error: 'Ya has realizado una reseña para este trabajador' },
-        { status: 400 }
-      )
+      if (solError || !solicitud) {
+        return NextResponse.json({ error: 'Solicitud no encontrada' }, { status: 404 })
+      }
+      if (solicitud.estado !== 'completada') {
+        return NextResponse.json(
+          { error: 'Solo puedes calificar cuando el trabajo esté finalizado' },
+          { status: 400 }
+        )
+      }
+      if (solicitud.usuario_id !== decodedToken.userId) {
+        return NextResponse.json({ error: 'No autorizado para calificar esta solicitud' }, { status: 403 })
+      }
+
+      const { data: existingBySolicitud } = await supabaseAdmin
+        .from('reviews')
+        .select('id')
+        .eq('solicitud_id', solicitudId)
+        .single()
+
+      if (existingBySolicitud) {
+        return NextResponse.json(
+          { error: 'Ya has realizado una reseña para esta solicitud' },
+          { status: 400 }
+        )
+      }
+
+      resolvedWorkerId = solicitud.trabajador_id
+    } else {
+      // Flujo legacy: por trabajador (una por usuario por trabajador)
+      if (!workerId) {
+        return NextResponse.json({ error: 'Se requiere workerId o solicitudId' }, { status: 400 })
+      }
+      const { data: existingReview, error: checkError } = await supabaseAdmin
+        .from('reviews')
+        .select('id')
+        .eq('trabajador_id', workerId)
+        .eq('usuario_id', decodedToken.userId)
+        .single()
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error('Error al verificar reseña existente:', checkError)
+        return NextResponse.json({ error: 'Error del servidor' }, { status: 500 })
+      }
+      if (existingReview) {
+        return NextResponse.json(
+          { error: 'Ya has realizado una reseña para este trabajador' },
+          { status: 400 }
+        )
+      }
     }
 
     const review = {
-      trabajador_id: workerId,
+      trabajador_id: resolvedWorkerId,
       usuario_id: decodedToken.userId,
       rating,
-      comment,
-      created_at: new Date().toISOString()
+      comment: comment || null,
+      created_at: new Date().toISOString(),
+      ...(solicitudId && { solicitud_id: solicitudId }),
     }
 
-    // Insertar la reseña en Supabase
     const { data, error } = await supabaseAdmin
       .from('reviews')
       .insert([review])
@@ -107,8 +153,11 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Error del servidor' }, { status: 500 })
     }
 
-    // Actualizar el promedio de calificaciones del trabajador usando la función RPC de Supabase
-    await supabaseAdmin.rpc('update_worker_rating', { worker_id: workerId })
+    try {
+      await supabaseAdmin.rpc('update_worker_rating', { worker_id: resolvedWorkerId })
+    } catch (rpcErr) {
+      console.warn('update_worker_rating RPC:', rpcErr)
+    }
 
     return NextResponse.json({ message: 'Reseña creada exitosamente' })
   } catch (error) {

@@ -1,6 +1,7 @@
 import './globals.css'
 import { Inter } from 'next/font/google'
 import { AuthProvider } from '@/lib/AuthContext'
+import NotificationsBell from '@/components/notifications-bell'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -14,6 +15,7 @@ export default function RootLayout({ children }) {
     <html lang="es">
       <body className={inter.className}>
         <AuthProvider>
+          <NotificationsBell />
           {children}
         </AuthProvider>
       </body>

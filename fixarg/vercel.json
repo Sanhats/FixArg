@@ -3,10 +3,6 @@
     "app/api/**/*.js": {
       "memory": 1024,
       "maxDuration": 30
-    },
-    "app/api/whatsapp/**/*.js": {
-      "memory": 1024,
-      "maxDuration": 60
     }
   },
   "rewrites": [

@@ -36,11 +36,12 @@ export async function POST(request) {
 
     // Preparar datos del usuario para enviar al cliente
     const userToSend = {
-      _id: trabajador.id, // Mantener _id para compatibilidad con el frontend
+      _id: trabajador.id,
       email: trabajador.email,
       firstName: trabajador.first_name,
       lastName: trabajador.last_name,
-      role: 'trabajador'
+      role: 'trabajador',
+      puntos: trabajador.puntos != null ? Number(trabajador.puntos) : 0,
     };
 
     return NextResponse.json(

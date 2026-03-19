@@ -1,13 +1,24 @@
 import { createClient } from '@supabase/supabase-js'
 
-if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error('Error de configuración: Variables de entorno de Supabase no definidas')
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+if (!supabaseUrl || !serviceRoleKey) {
+  throw new Error('Error de configuración: Variables de entorno de Supabase no definidas (NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)')
+}
+
+// La URL debe ser la del proyecto (ej. https://xxxx.supabase.co), no una clave
+if (!supabaseUrl.startsWith('http://') && !supabaseUrl.startsWith('https://')) {
+  throw new Error(
+    'NEXT_PUBLIC_SUPABASE_URL debe ser la URL del proyecto (ej. https://tu-proyecto.supabase.co). ' +
+    'En Supabase: Project Settings → API → Project URL. No uses la clave "anon" ni "publishable" aquí.'
+  )
 }
 
 // Cliente de Supabase con la clave de servicio para operaciones del lado del servidor
 const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
+  supabaseUrl,
+  serviceRoleKey,
   {
     auth: {
       autoRefreshToken: false,
@@ -19,7 +30,7 @@ const supabaseAdmin = createClient(
 // Cliente de Supabase para el lado del cliente
 export const createSupabaseClient = (supabaseAccessToken) => {
   return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    supabaseUrl,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
       global: {
@@ -43,7 +54,11 @@ export async function insertUser(userData) {
           first_name: userData.firstName,
           last_name: userData.lastName,
           phone: userData.phone,
-          hashed_password: userData.password // Ya debe venir hasheado
+          hashed_password: userData.password, // Ya debe venir hasheado
+          street: userData.street ?? null,
+          street_number: userData.streetNumber ?? null,
+          province: userData.province ?? null,
+          locality: userData.locality ?? null
         }
       ])
       .select()
@@ -78,27 +93,37 @@ export async function findUserByEmail(email) {
 // Funciones para trabajadores/profesionales
 export async function insertTasker(taskerData) {
   try {
-    console.log('Attempting to insert tasker:', taskerData)
+    const row = {
+      email: taskerData.email,
+      first_name: taskerData.firstName,
+      last_name: taskerData.lastName,
+      occupation: taskerData.occupation ?? null,
+      hourly_rate: taskerData.hourlyRate ?? 0,
+      description: taskerData.description ?? null,
+      phone: taskerData.phone ?? null,
+      display_name: taskerData.displayName ?? null,
+      status: taskerData.status || 'pending',
+      hashed_password: taskerData.password,
+    }
+    if (taskerData.documentAntecedentesUrl != null) row.document_antecedentes_url = taskerData.documentAntecedentesUrl
+    if (taskerData.dniFrenteUrl != null) row.dni_frente_url = taskerData.dniFrenteUrl
+    if (taskerData.dniReversoUrl != null) row.dni_reverso_url = taskerData.dniReversoUrl
+    if (taskerData.verificationStatus != null) row.verification_status = taskerData.verificationStatus
+    if (taskerData.profilePhotoUrl != null) row.profile_photo_url = taskerData.profilePhotoUrl
+    if (taskerData.experience != null) row.experience = taskerData.experience
+    if (taskerData.tools != null) row.tools = taskerData.tools
+    if (taskerData.zones != null) row.zones = taskerData.zones
+    if (taskerData.availability != null) row.availability = taskerData.availability
+    if (taskerData.skillsJson != null && Array.isArray(taskerData.skillsJson)) {
+      row.skills_json = taskerData.skillsJson
+    }
+
     const { data, error } = await supabaseAdmin
       .from('trabajadores')
-      .insert([
-        {
-          email: taskerData.email,
-          first_name: taskerData.firstName,
-          last_name: taskerData.lastName,
-          occupation: taskerData.occupation,
-          hourly_rate: taskerData.hourlyRate,
-          description: taskerData.description,
-          phone: taskerData.phone,
-          display_name: taskerData.displayName,
-          status: taskerData.status || 'pending',
-          hashed_password: taskerData.password // Ya debe venir hasheado
-        }
-      ])
+      .insert([row])
       .select()
 
     if (error) throw error
-    console.log('Tasker inserted successfully:', data[0].id)
     return { insertedId: data[0].id }
   } catch (error) {
     console.error('Failed to insert tasker:', error)

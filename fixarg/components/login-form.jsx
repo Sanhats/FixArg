@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog"
 import { useAuth } from '@/lib/AuthContext'
 
-export default function LoginForm() {
+export default function LoginForm({ triggerClassName = "", triggerVariant = "ghost", redirectAfterLogin = null }) {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -52,7 +52,8 @@ export default function LoginForm() {
 
       login(data.token, data.user)
       setIsOpen(false)
-      router.push('/')
+      const target = redirectAfterLogin && redirectAfterLogin.startsWith("/") ? redirectAfterLogin : "/"
+      router.push(target)
     } catch (error) {
       console.error('Login error:', error)
       setSubmitError(error.message || 'Error al iniciar sesión. Por favor, intenta nuevamente.')
@@ -64,7 +65,7 @@ export default function LoginForm() {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost">Iniciar sesión</Button>
+        <Button variant={triggerVariant} className={triggerClassName}>Iniciar sesión</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]" aria-describedby="login-form-description">
         <DialogHeader>

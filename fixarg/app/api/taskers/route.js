@@ -1,47 +1,77 @@
 import bcrypt from 'bcryptjs'
 import supabaseAdmin, { insertTasker } from '@/lib/supabase'
+import { checkFakeAccount } from '@/lib/platform'
 
 export async function POST(request) {
   try {
-    // Parse the JSON body
     const body = await request.json()
     
-    // Validate hourly rate
+    // Validar precio: puede venir en hourlyRate (único) o en skillsJson (por habilidad)
+    let hourlyRate = 0
     if (body.hourlyRate !== undefined) {
-      const hourlyRate = parseFloat(body.hourlyRate)
+      hourlyRate = parseFloat(body.hourlyRate)
       if (isNaN(hourlyRate) || hourlyRate < 0) {
         return new Response(
           JSON.stringify({
             success: false,
             message: 'Invalid hourly rate. Must be a non-negative number.',
           }),
-          {
-            status: 400,
-            headers: {
-              'Content-Type': 'application/json',
-            },
-          }
+          { status: 400, headers: { 'Content-Type': 'application/json' } }
         )
       }
-      body.hourlyRate = hourlyRate // Ensure it's stored as a number
     }
-    
-    // Hash the password
+    let skillsJson = []
+    if (Array.isArray(body.skillsJson) && body.skillsJson.length > 0) {
+      skillsJson = body.skillsJson.map(s => ({
+        skill: String(s.skill || s.name || '').trim(),
+        hourlyRate: typeof s.hourlyRate === 'number' ? s.hourlyRate : parseFloat(s.hourlyRate) || 0,
+      })).filter(s => s.skill)
+      if (skillsJson.length > 0 && hourlyRate === 0) {
+        hourlyRate = skillsJson[0].hourlyRate
+      }
+    }
+    if (hourlyRate === 0 && (!skillsJson || skillsJson.length === 0)) {
+      hourlyRate = parseFloat(body.hourlyRate) || 0
+    }
+
+    const antifraud = checkFakeAccount({ email: body.email })
+    if (antifraud.risk === 'high') {
+      console.warn('[Antifraude] Registro tasker rechazado:', body.email, antifraud.reasons)
+      return new Response(
+        JSON.stringify({
+          success: false,
+          message: 'No se pudo completar el registro. Si crees que es un error, contacta a soporte.',
+        }),
+        { status: 403, headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+    if (antifraud.risk === 'medium' && antifraud.reasons?.length) {
+      console.warn('[Antifraude] Registro tasker revisar:', body.email, antifraud.reasons)
+    }
+
     const hashedPassword = await bcrypt.hash(body.password, 10)
-    
-    // Preparar los datos para Supabase
+
     const taskerData = {
       firstName: body.firstName,
       lastName: body.lastName,
       email: body.email,
       phone: body.phone,
-      occupation: body.occupation,
-      hourlyRate: body.hourlyRate,
+      occupation: body.occupation ?? (skillsJson[0]?.skill || null),
+      hourlyRate,
       description: body.description,
       displayName: body.displayName || `${body.firstName} ${body.lastName}`,
       password: hashedPassword,
-      status: 'pending'
+      status: 'pending',
     }
+    if (body.documentAntecedentesUrl != null) taskerData.documentAntecedentesUrl = body.documentAntecedentesUrl
+    if (body.dniFrenteUrl != null) taskerData.dniFrenteUrl = body.dniFrenteUrl
+    if (body.dniReversoUrl != null) taskerData.dniReversoUrl = body.dniReversoUrl
+    if (body.profilePhotoUrl != null) taskerData.profilePhotoUrl = body.profilePhotoUrl
+    if (body.experience != null) taskerData.experience = body.experience
+    if (body.tools != null) taskerData.tools = body.tools
+    if (body.zones != null) taskerData.zones = body.zones
+    if (body.availability != null) taskerData.availability = body.availability
+    if (skillsJson.length > 0) taskerData.skillsJson = skillsJson
     
     // Insertar el nuevo trabajador en Supabase
     const result = await insertTasker(taskerData)

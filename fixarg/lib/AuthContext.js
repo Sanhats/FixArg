@@ -73,13 +73,20 @@ export function AuthProvider({ children }) {
     return Cookies.get('authToken')
   }
 
+  const userRole = user?.role || null
+  const isTrabajador = userRole === 'trabajador'
+  const isCliente = userRole === 'user' || (!!user && !isTrabajador)
+
   const value = {
     isLoggedIn,
     user,
+    userRole,
+    isCliente,
+    isTrabajador,
     login,
     logout,
     getToken,
-    isLoading
+    isLoading,
   }
 
   return (
