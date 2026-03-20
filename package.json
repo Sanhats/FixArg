@@ -1,0 +1,19 @@
+{
+  "name": "fixarg-monorepo",
+  "private": true,
+  "description": "FixArg: Next.js (web) + Expo (móvil)",
+  "workspaces": ["fixarg", "packages/*"],
+  "scripts": {
+    "dev:web": "npm run dev --workspace=fixarg",
+    "build:web": "npm run build --workspace=fixarg",
+    "dev:mobile": "npm run start --prefix apps/mobile",
+    "ios": "npm run ios --prefix apps/mobile",
+    "android": "npm run android --prefix apps/mobile",
+    "install:mobile": "npm install --prefix apps/mobile"
+  },
+  "engines": { "node": ">=18" },
+  "overrides": {
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  }
+}

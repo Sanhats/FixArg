@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "12402483997",
+    "project_id": "fixargdev-mobile",
+    "storage_bucket": "fixargdev-mobile.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:12402483997:android:b48e6c599db778a0d937f4",
+        "android_client_info": {
+          "package_name": "fixargdev.com"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAbSXPIj4Bg7sM5nplnsaed7SqbNEK5jxE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

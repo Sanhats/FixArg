@@ -1,0 +1,97 @@
+import { useEffect, useState } from 'react';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import { useAuth } from '../context/AuthContext';
+import { apiRequest, bearerHeaders } from '@fixarg/api-client';
+import { labelEstado } from '../constants/estados';
+
+export default function SolicitudDetailScreen({ route }) {
+  const { id } = route.params || {};
+  const { token } = useAuth();
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (!id || !token) {
+      setLoading(false);
+      setError('Falta id o sesión');
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const json = await apiRequest(`/api/solicitudes/${id}`, {
+          method: 'GET',
+          headers: bearerHeaders(token),
+        });
+        if (!cancelled) setData(json);
+      } catch (e) {
+        if (!cancelled) setError(e.message || 'Error');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [id, token]);
+
+  if (loading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color="#0f172a" />
+      </View>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <View style={styles.padded}>
+        <Text style={styles.err}>{error || 'No encontrada'}</Text>
+      </View>
+    );
+  }
+
+  const t = data.trabajador;
+  const trabajadorNombre = t
+    ? (t.displayName || [t.firstName, t.lastName].filter(Boolean).join(' ') || t.email)
+    : null;
+
+  return (
+    <ScrollView style={styles.flex} contentContainerStyle={styles.padded}>
+      <Text style={styles.estado}>{labelEstado(data.estado)}</Text>
+      <Text style={styles.rubro}>{data.servicioRubro || 'Servicio'}</Text>
+      <Text style={styles.label}>Cuando</Text>
+      <Text style={styles.val}>{data.fecha || '—'} {data.hora || ''}</Text>
+      {data.direccion ? (
+        <>
+          <Text style={styles.label}>Dirección</Text>
+          <Text style={styles.val}>{data.direccion}</Text>
+        </>
+      ) : null}
+      <Text style={styles.label}>Descripción</Text>
+      <Text style={styles.val}>{data.descripcion || '—'}</Text>
+      {trabajadorNombre ? (
+        <>
+          <Text style={styles.label}>Profesional</Text>
+          <Text style={styles.val}>{trabajadorNombre}</Text>
+        </>
+      ) : null}
+      {Array.isArray(data.presupuestos) && data.presupuestos.length > 0 ? (
+        <>
+          <Text style={styles.label}>Presupuestos</Text>
+          <Text style={styles.val}>{data.presupuestos.length} recibidos</Text>
+        </>
+      ) : null}
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  flex: { flex: 1, backgroundColor: '#fff' },
+  padded: { padding: 20 },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  estado: { fontSize: 14, color: '#64748b', marginBottom: 4 },
+  rubro: { fontSize: 22, fontWeight: '700', color: '#0f172a', marginBottom: 20 },
+  label: { fontSize: 12, color: '#94a3b8', textTransform: 'uppercase', marginTop: 16 },
+  val: { fontSize: 16, color: '#334155', marginTop: 4 },
+  err: { color: '#b91c1c', fontSize: 16 },
+});

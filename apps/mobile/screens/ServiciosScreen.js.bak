@@ -1,0 +1,35 @@
+import { View, Text, Pressable, StyleSheet, ScrollView } from 'react-native';
+import { useAuth } from '../context/AuthContext';
+
+export default function HomeScreen({ navigation }) {
+  const { user, logout } = useAuth();
+  const name = [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.email || 'Usuario';
+
+  return (
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.hi}>Hola, {name}</Text>
+      <Text style={styles.email}>{user?.email}</Text>
+      <Pressable style={styles.primary} onPress={() => navigation.navigate('MisSolicitudes')}>
+        <Text style={styles.primaryText}>Mis solicitudes</Text>
+      </Pressable>
+      <Pressable style={styles.secondary} onPress={() => navigation.navigate('DebugApi')}>
+        <Text style={styles.secondaryText}>Probar /api/health</Text>
+      </Pressable>
+      <Pressable style={styles.outline} onPress={logout}>
+        <Text style={styles.outlineText}>Cerrar sesión</Text>
+      </Pressable>
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { padding: 24, paddingTop: 16 },
+  hi: { fontSize: 24, fontWeight: '700', color: '#0f172a' },
+  email: { fontSize: 14, color: '#64748b', marginBottom: 28 },
+  primary: { backgroundColor: '#0f172a', paddingVertical: 16, borderRadius: 10, alignItems: 'center', marginBottom: 12 },
+  primaryText: { color: '#fff', fontWeight: '600', fontSize: 16 },
+  secondary: { backgroundColor: '#e2e8f0', paddingVertical: 14, borderRadius: 10, alignItems: 'center', marginBottom: 12 },
+  secondaryText: { color: '#0f172a', fontWeight: '600' },
+  outline: { paddingVertical: 14, alignItems: 'center', marginTop: 24 },
+  outlineText: { color: '#64748b', fontSize: 15 },
+});
